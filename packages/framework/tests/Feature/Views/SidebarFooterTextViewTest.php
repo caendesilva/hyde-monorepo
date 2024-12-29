@@ -7,6 +7,7 @@ namespace Hyde\Framework\Testing\Feature\Views;
 use Hyde\Facades\Config;
 use Hyde\Testing\TestCase;
 use Hyde\Testing\TestsBladeViews;
+use Hyde\Framework\Features\Navigation\DocumentationSidebar;
 
 class SidebarFooterTextViewTest extends TestCase
 {
@@ -14,33 +15,22 @@ class SidebarFooterTextViewTest extends TestCase
 
     public function testSidebarFooterTextViewWithDefaultConfig()
     {
-        $view = $this->view(view('hyde::components.docs.sidebar-footer-text'));
+        $view = $this->view(view('hyde::components.docs.sidebar-footer-text', $this->withSidebar()));
 
-        $view->assertSeeHtml('<a href="index.html">Back to home page</a>');
-    }
-
-    public function testSidebarFooterTextViewWhenConfigOptionIsTrue()
-    {
-        Config::set('docs.sidebar.footer', true);
-
-        $view = $this->view(view('hyde::components.docs.sidebar-footer-text'));
-
-        $view->assertSeeHtml('<a href="index.html">Back to home page</a>');
+        $view->assertSeeHtml('<a href="../">Back to home page</a>');
     }
 
     public function testSidebarFooterTextViewWhenConfigOptionIsMarkdownString()
     {
         Config::set('docs.sidebar.footer', 'Your Markdown String Here');
 
-        $view = $this->view(view('hyde::components.docs.sidebar-footer-text'));
+        $view = $this->view(view('hyde::components.docs.sidebar-footer-text', $this->withSidebar()));
 
         $view->assertSeeText('Your Markdown String Here');
     }
 
-    public function testSidebarFooterTextViewWhenConfigOptionIsFalse()
+    protected function withSidebar(): array
     {
-        // This state is handled earlier in the component by the sidebar component so we don't need to test it here.
-
-        $this->assertTrue(true);
+        return ['sidebar' => new DocumentationSidebar()];
     }
 }

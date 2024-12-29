@@ -40,6 +40,7 @@ class RouteCollectionTest extends TestCase
     public function testBootMethodDiscoversAllPageTypes()
     {
         $this->withoutDefaultPages();
+        $this->withoutDocumentationSearch();
 
         $this->file('_pages/blade.blade.php');
         $this->file('_pages/markdown.md');
@@ -61,6 +62,7 @@ class RouteCollectionTest extends TestCase
         ], $collection->all());
 
         $this->restoreDefaultPages();
+        $this->restoreDocumentationSearch();
     }
 
     public function testGetRoutesReturnsAllRoutes()
@@ -77,6 +79,7 @@ class RouteCollectionTest extends TestCase
     public function testGetRoutesForModelReturnsCollectionOfRoutesOfGivenClass()
     {
         $this->withoutDefaultPages();
+        $this->withoutDocumentationSearch();
 
         $this->file('_pages/blade.blade.php');
         $this->file('_pages/markdown.md');
@@ -94,6 +97,7 @@ class RouteCollectionTest extends TestCase
         $this->assertEquals(new Route(new HtmlPage('html')), Routes::getRoutes(HtmlPage::class)->first());
 
         $this->restoreDefaultPages();
+        $this->restoreDocumentationSearch();
     }
 
     public function testAddRouteAddsNewRoute()

@@ -88,10 +88,12 @@ class DiscoveryServiceTest extends UnitTestCase
     {
         $testFiles = ['png', 'svg', 'jpg', 'jpeg', 'gif', 'ico', 'css', 'js'];
 
-        foreach ($testFiles as $fileType) {
-            $path = 'test.'.$fileType;
-            $this->file('_media/'.$path);
-            $this->assertContains($path, MediaFile::files());
+        foreach ($testFiles as $type) {
+            $this->file("_media/test.$type");
+        }
+
+        foreach ($testFiles as $type) {
+            $this->assertContains("test.$type", MediaFile::files());
         }
     }
 
@@ -101,6 +103,8 @@ class DiscoveryServiceTest extends UnitTestCase
         $this->file("_media/$path");
         $this->assertNotContains($path, MediaFile::files());
         self::mockConfig(['hyde.media_extensions' => ['custom']]);
+
+        $this->resetKernel(); // Reboot to rediscover new files
         $this->assertContains($path, MediaFile::files());
     }
 
@@ -130,7 +134,8 @@ class DiscoveryServiceTest extends UnitTestCase
 
         $this->assertSame([], MediaFile::files());
 
-        self::mockConfig(['hyde.media_extensions' => '1,2,3']);
+        self::mockConfig(['hyde.media_extensions' => ['1,2,3']]);
+        $this->resetKernel(); // Reboot to rediscover new files
         $this->assertSame(['test.1', 'test.2', 'test.3'], MediaFile::files());
     }
 
@@ -143,6 +148,7 @@ class DiscoveryServiceTest extends UnitTestCase
 
         $this->assertSame([], MediaFile::files());
         self::mockConfig(['hyde.media_extensions' => ['1', '2', '3']]);
+        $this->resetKernel(); // Reboot to rediscover new files
         $this->assertSame(['test.1', 'test.2', 'test.3'], MediaFile::files());
     }
 

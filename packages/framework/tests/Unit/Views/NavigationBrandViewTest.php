@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Hyde\Framework\Testing\Unit\Views;
 
-use Hyde\Framework\Features\Navigation\NavigationMenu;
+use Hyde\Framework\Features\Navigation\MainNavigationMenu;
 use Hyde\Testing\TestCase;
 
 /**
@@ -22,7 +22,7 @@ class NavigationBrandViewTest extends TestCase
     protected function render(): string
     {
         return view('hyde::components.navigation.navigation-brand', [
-            'navigation' => NavigationMenu::create(),
+            'navigation' => new MainNavigationMenu(),
         ])->render();
     }
 

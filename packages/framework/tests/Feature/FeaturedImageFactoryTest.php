@@ -16,6 +16,15 @@ use RuntimeException;
  */
 class FeaturedImageFactoryTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config(['hyde.cache_busting' => false]);
+
+        $this->file('_media/foo');
+    }
+
     public function testWithDataFromSchema()
     {
         $array = [
@@ -98,6 +107,8 @@ class FeaturedImageFactoryTest extends TestCase
     {
         Hyde::setMediaDirectory('_assets');
 
+        $this->file('_assets/foo');
+
         $this->assertSourceIsSame('assets/foo', ['image' => 'foo']);
         $this->assertSourceIsSame('assets/foo', ['image' => 'assets/foo']);
         $this->assertSourceIsSame('assets/foo', ['image' => '_assets/foo']);
@@ -111,6 +122,8 @@ class FeaturedImageFactoryTest extends TestCase
     {
         Hyde::setMediaDirectory('assets');
 
+        $this->file('assets/foo');
+
         $this->assertSourceIsSame('assets/foo', ['image' => 'foo']);
         $this->assertSourceIsSame('assets/foo', ['image' => 'assets/foo']);
         $this->assertSourceIsSame('assets/foo', ['image' => 'assets/foo']);
@@ -118,6 +131,19 @@ class FeaturedImageFactoryTest extends TestCase
         $this->assertSourceIsSame('assets/foo', ['image' => ['source' => 'foo']]);
         $this->assertSourceIsSame('assets/foo', ['image' => ['source' => 'assets/foo']]);
         $this->assertSourceIsSame('assets/foo', ['image' => ['source' => 'assets/foo']]);
+    }
+
+    public function testImagePathsWithCacheBusting()
+    {
+        config(['hyde.cache_busting' => true]);
+
+        $this->assertSourceIsSame('media/foo?v=00000000', ['image' => 'foo']);
+        $this->assertSourceIsSame('media/foo?v=00000000', ['image' => 'media/foo']);
+        $this->assertSourceIsSame('media/foo?v=00000000', ['image' => '_media/foo']);
+
+        $this->assertSourceIsSame('media/foo?v=00000000', ['image' => ['source' => 'foo']]);
+        $this->assertSourceIsSame('media/foo?v=00000000', ['image' => ['source' => 'media/foo']]);
+        $this->assertSourceIsSame('media/foo?v=00000000', ['image' => ['source' => '_media/foo']]);
     }
 
     protected function makeFromArray(array $matter): FeaturedImage

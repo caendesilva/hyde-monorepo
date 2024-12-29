@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Hyde\Testing;
 
-use Hyde\Facades\Features;
 use Illuminate\View\Component;
 use LaravelZero\Framework\Testing\TestCase as BaseTestCase;
 
@@ -39,8 +38,6 @@ abstract class TestCase extends BaseTestCase
             Component::forgetComponentsResolver();
             Component::forgetFactory();
         }
-
-        Features::clearMockedInstances();
 
         parent::tearDown();
     }

@@ -6,13 +6,15 @@ namespace Hyde\Framework\Testing\Feature\Commands;
 
 use Hyde\Facades\Filesystem;
 use Hyde\Hyde;
+use Hyde\Pages\InMemoryPage;
 use Hyde\Pages\DocumentationPage;
 use Hyde\Testing\TestCase;
+use Hyde\Framework\Features\Documentation\DocumentationSearchIndex;
 
 /**
  * @covers \Hyde\Console\Commands\BuildSearchCommand
- * @covers \Hyde\Framework\Actions\PostBuildTasks\GenerateSearch
  * @covers \Hyde\Framework\Features\Documentation\DocumentationSearchPage
+ * @covers \Hyde\Framework\Features\Documentation\DocumentationSearchIndex
  */
 class BuildSearchCommandTest extends TestCase
 {
@@ -102,5 +104,35 @@ class BuildSearchCommandTest extends TestCase
         $this->assertFileExists(Hyde::path('foo/bar/baz/search.html'));
 
         Filesystem::deleteDirectory('foo');
+    }
+
+    public function test_command_uses_search_pages_from_kernel_when_present()
+    {
+        Hyde::pages()->addPage(new SearchIndexOverrideTestPage());
+
+        Hyde::pages()->addPage(tap(new InMemoryPage('docs/search'), function (InMemoryPage $page): void {
+            $page->macro('compile', fn () => 'Foo');
+        }));
+
+        $this->artisan('build:search')->assertExitCode(0);
+
+        $this->assertFileExists(Hyde::path('_site/docs/search.json'));
+
+        $this->assertSame('{"foo":"bar"}', Filesystem::getContents('_site/docs/search.json'));
+
+        Filesystem::unlink('_site/docs/search.json');
+    }
+}
+
+class SearchIndexOverrideTestPage extends DocumentationSearchIndex
+{
+    public function compile(): string
+    {
+        return '{"foo":"bar"}';
+    }
+
+    public function getOutputPath(): string
+    {
+        return 'docs/search.json';
     }
 }

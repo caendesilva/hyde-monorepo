@@ -19,7 +19,6 @@ use Illuminate\Support\Facades\File;
  * @covers \Hyde\Framework\Features\BuildTasks\PostBuildTask
  * @covers \Hyde\Framework\Actions\PostBuildTasks\GenerateSitemap
  * @covers \Hyde\Framework\Actions\PostBuildTasks\GenerateRssFeed
- * @covers \Hyde\Framework\Actions\PostBuildTasks\GenerateSearch
  *
  * @see \Hyde\Framework\Testing\Unit\BuildTaskServiceUnitTest
  */

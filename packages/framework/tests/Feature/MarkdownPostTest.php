@@ -8,6 +8,7 @@ use Hyde\Hyde;
 use Hyde\Pages\BladePage;
 use Hyde\Facades\Filesystem;
 use Hyde\Framework\Actions\StaticPageBuilder;
+use Hyde\Framework\Exceptions\FileNotFoundException;
 use Hyde\Framework\Features\Blogging\Models\FeaturedImage;
 use Hyde\Framework\Features\Blogging\Models\PostAuthor;
 use Hyde\Markdown\Models\FrontMatter;
@@ -28,7 +29,7 @@ class MarkdownPostTest extends TestCase
         ]));
 
         $this->assertInstanceOf(PostAuthor::class, $post->author);
-        $this->assertSame('John Doe', $post->author->username);
+        $this->assertSame('john_doe', $post->author->username);
         $this->assertSame('John Doe', $post->author->name);
         $this->assertNull($post->author->website);
     }
@@ -47,6 +48,23 @@ class MarkdownPostTest extends TestCase
         $this->assertSame('john_doe', $post->author->username);
         $this->assertSame('John Doe', $post->author->name);
         $this->assertSame('https://example.com', $post->author->website);
+    }
+
+    public function testAuthorRetrievalUsesNormalizedUsernameToFindTheRightAuthorRegardlessOfFormatting()
+    {
+        $postA = new MarkdownPost(matter: FrontMatter::fromArray([
+            'author' => 'mr hyde',
+        ]));
+
+        $postB = new MarkdownPost(matter: FrontMatter::fromArray([
+            'author' => 'Mr Hyde',
+        ]));
+
+        $postC = new MarkdownPost(matter: FrontMatter::fromArray([
+            'author' => 'mr_hyde',
+        ]));
+
+        $this->assertAllSame($postA->author, $postB->author, $postC->author);
     }
 
     public function testConstructorCanCreateANewImageInstanceFromAString()
@@ -89,14 +107,28 @@ class MarkdownPostTest extends TestCase
 
     public function testFeaturedImageCanBeConstructedReturnsImageObjectWithLocalPathWhenMatterIsString()
     {
+        $this->setupMediaFileAndCacheBusting();
+
         $page = MarkdownPost::make(matter: ['image' => 'foo.png']);
         $image = $page->image;
         $this->assertInstanceOf(FeaturedImage::class, $image);
         $this->assertSame('media/foo.png', $image->getSource());
     }
 
+    public function testFeaturedImageCanBeConstructedReturnsImageObjectWithLocalPathAndCacheBusting()
+    {
+        $this->setupMediaFileAndCacheBusting(true);
+
+        $page = MarkdownPost::make(matter: ['image' => 'foo.png']);
+        $image = $page->image;
+        $this->assertInstanceOf(FeaturedImage::class, $image);
+        $this->assertSame('media/foo.png?v=98b41d87', $image->getSource());
+    }
+
     public function testFeaturedImageCanBeConstructedReturnsImageObjectWithRemotePathWhenMatterIsString()
     {
+        $this->setupMediaFileAndCacheBusting(true);
+
         $page = MarkdownPost::make(matter: ['image' => 'https://example.com/foo.png']);
         $image = $page->image;
         $this->assertInstanceOf(FeaturedImage::class, $image);
@@ -105,11 +137,29 @@ class MarkdownPostTest extends TestCase
 
     public function testFeaturedImageCanBeConstructedReturnsImageObjectWithSuppliedDataWhenMatterIsArray()
     {
+        $this->setupMediaFileAndCacheBusting();
         $page = MarkdownPost::make(matter: ['image' => ['source' => 'foo.png', 'titleText' => 'bar']]);
         $image = $page->image;
         $this->assertInstanceOf(FeaturedImage::class, $image);
         $this->assertSame('media/foo.png', $image->getSource());
         $this->assertSame('bar', $image->getTitleText());
+    }
+
+    public function testFeaturedImageThrowsExceptionWhenFileDoesNotExist()
+    {
+        $this->expectException(FileNotFoundException::class);
+        $this->expectExceptionMessage('File [_media/nonexistent.png] not found when trying to resolve a media asset.');
+
+        MarkdownPost::make(matter: ['image' => 'nonexistent.png']);
+    }
+
+    public function testFeaturedImageNormalizesPathForDifferentMediaDirectoryConfigurations()
+    {
+        Hyde::setMediaDirectory('assets');
+        $this->file('assets/foo.png', 'test content');
+
+        $page = MarkdownPost::make(matter: ['image' => 'foo.png']);
+        $this->assertSame('assets/foo.png?v=98b41d87', $page->image->getSource());
     }
 
     public function testBlogPostCanBeCreatedWithoutFrontMatter()
@@ -140,5 +190,11 @@ class MarkdownPostTest extends TestCase
         Filesystem::unlink('_posts/test-post.md');
         Filesystem::unlink('_pages/feed-test.blade.php');
         Filesystem::unlink('_site/feed-test.html');
+    }
+
+    protected function setupMediaFileAndCacheBusting(bool $enableCacheBusting = false): void
+    {
+        $this->file('_media/foo.png', 'test content');
+        config(['hyde.cache_busting' => $enableCacheBusting]);
     }
 }

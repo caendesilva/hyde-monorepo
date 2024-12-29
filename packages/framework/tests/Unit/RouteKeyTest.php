@@ -18,6 +18,8 @@ use Hyde\Testing\UnitTestCase;
  */
 class RouteKeyTest extends UnitTestCase
 {
+    protected static bool $needsConfig = true;
+
     public function testMake()
     {
         $this->assertEquals(RouteKey::make('foo'), new RouteKey('foo'));
@@ -85,16 +87,54 @@ class RouteKeyTest extends UnitTestCase
     {
         MarkdownPage::setOutputDirectory('foo');
         $this->assertEquals(new RouteKey('foo/bar'), RouteKey::fromPage(MarkdownPage::class, 'bar'));
+        MarkdownPage::setOutputDirectory('');
     }
 
     public function testFromPageWithCustomNestedOutputDirectory()
     {
         MarkdownPage::setOutputDirectory('foo/bar');
         $this->assertEquals(new RouteKey('foo/bar/baz'), RouteKey::fromPage(MarkdownPage::class, 'baz'));
+        MarkdownPage::setOutputDirectory('');
     }
 
-    public static function tearDownAfterClass(): void
+    public function testItExtractsCoreIdentifierPartFromNumericalFilenamePrefix()
     {
-        MarkdownPage::setOutputDirectory('');
+        $this->assertSame('docs/test', RouteKey::fromPage(DocumentationPage::class, '01-test')->get());
+    }
+
+    public function testItExtractsCoreIdentifierPartFromNumericalFilenamePrefixWithKebabCaseSyntax()
+    {
+        $this->assertSame('docs/foo', RouteKey::fromPage(DocumentationPage::class, '01-foo')->get());
+        $this->assertSame('docs/bar', RouteKey::fromPage(DocumentationPage::class, '02-bar')->get());
+        $this->assertSame('docs/baz', RouteKey::fromPage(DocumentationPage::class, '03-baz')->get());
+    }
+
+    public function testItExtractsCoreIdentifierPartFromNumericalFilenamePrefixWithSnakeCaseSyntax()
+    {
+        $this->assertSame('docs/foo', RouteKey::fromPage(DocumentationPage::class, '01_foo')->get());
+        $this->assertSame('docs/bar', RouteKey::fromPage(DocumentationPage::class, '02_bar')->get());
+        $this->assertSame('docs/baz', RouteKey::fromPage(DocumentationPage::class, '03_baz')->get());
+    }
+
+    public function testItExtractsCoreIdentifierPartFromNumericalFilenamePrefixRegardlessOfLeadingZeroes()
+    {
+        $this->assertSame('docs/foo', RouteKey::fromPage(DocumentationPage::class, '123-foo')->get());
+        $this->assertSame('docs/foo', RouteKey::fromPage(DocumentationPage::class, '0123-foo')->get());
+        $this->assertSame('docs/foo', RouteKey::fromPage(DocumentationPage::class, '00123-foo')->get());
+        $this->assertSame('docs/foo', RouteKey::fromPage(DocumentationPage::class, '000123-foo')->get());
+        $this->assertSame('docs/foo', RouteKey::fromPage(DocumentationPage::class, '0000123-foo')->get());
+    }
+
+    public function testItExtractsCoreIdentifierPartFromNumericalFilenamePrefixForNestedIdentifiers()
+    {
+        $this->assertSame('docs/foo/bar', RouteKey::fromPage(DocumentationPage::class, 'foo/01-bar')->get());
+        $this->assertSame('docs/foo/bar/baz', RouteKey::fromPage(DocumentationPage::class, 'foo/bar/02-baz')->get());
+        $this->assertSame('docs/foo/bar/baz', RouteKey::fromPage(DocumentationPage::class, 'foo/01-bar/03-baz')->get());
+    }
+
+    public function testItDoesNotExtractNonNumericalFilenamePrefixes()
+    {
+        $this->assertSame('docs/foo-bar', RouteKey::fromPage(DocumentationPage::class, 'foo-bar')->get());
+        $this->assertSame('docs/abc-bar', RouteKey::fromPage(DocumentationPage::class, 'abc-bar')->get());
     }
 }

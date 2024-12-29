@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Hyde\Framework\Testing\Feature\Foundation;
 
 use Hyde\Foundation\HydeKernel;
+use Illuminate\Support\Collection;
 use Hyde\Foundation\Kernel\Filesystem;
 use Hyde\Foundation\PharSupport;
 use Hyde\Framework\Actions\Internal\FileFinder;
@@ -14,15 +15,16 @@ use Hyde\Pages\DocumentationPage;
 use Hyde\Pages\HtmlPage;
 use Hyde\Pages\MarkdownPage;
 use Hyde\Pages\MarkdownPost;
+use Hyde\Support\Filesystem\MediaFile;
 use Hyde\Testing\CreatesTemporaryFiles;
 use Hyde\Testing\UnitTestCase;
-use Illuminate\Support\Collection;
 
 use function Hyde\normalize_slashes;
 
 /**
  * @covers \Hyde\Foundation\HydeKernel
  * @covers \Hyde\Foundation\Kernel\Filesystem
+ * @covers \Hyde\Foundation\Concerns\HasMediaFiles
  * @covers \Hyde\Facades\Filesystem
  */
 class FilesystemTest extends UnitTestCase
@@ -34,6 +36,7 @@ class FilesystemTest extends UnitTestCase
     protected Filesystem $filesystem;
 
     protected static bool $needsKernel = true;
+    protected static bool $needsConfig = true;
 
     protected function setUp(): void
     {
@@ -264,32 +267,20 @@ class FilesystemTest extends UnitTestCase
 
     public function testHelperForMediaPath()
     {
-        $this->assertSame(Hyde::path('_media'), Hyde::mediaPath());
-    }
+        $this->assertSame(Hyde::path('_media'), MediaFile::sourcePath());
+        $this->assertSame(MediaFile::sourcePath(), MediaFile::sourcePath());
 
-    public function testHelperForMediaPathReturnsPathToFileWithinTheDirectory()
-    {
-        $this->assertSame(Hyde::path('_media/foo.css'), Hyde::mediaPath('foo.css'));
-    }
-
-    public function testGetMediaPathReturnsAbsolutePath()
-    {
-        $this->assertSame(Hyde::path('_media'), Hyde::mediaPath());
+        $this->assertSame(Hyde::path('_media/foo.png'), MediaFile::sourcePath('foo.png'));
+        $this->assertSame(MediaFile::sourcePath('foo.png'), MediaFile::sourcePath('foo.png'));
     }
 
     public function testHelperForMediaOutputPath()
     {
-        $this->assertSame(Hyde::path('_site/media'), Hyde::siteMediaPath());
-    }
+        $this->assertSame(Hyde::path('_site/media'), MediaFile::outputPath());
+        $this->assertSame(MediaFile::outputPath(), MediaFile::outputPath());
 
-    public function testHelperForMediaOutputPathReturnsPathToFileWithinTheDirectory()
-    {
-        $this->assertSame(Hyde::path('_site/media/foo.css'), Hyde::siteMediaPath('foo.css'));
-    }
-
-    public function testGetMediaOutputPathReturnsAbsolutePath()
-    {
-        $this->assertSame(Hyde::path('_site/media'), Hyde::siteMediaPath());
+        $this->assertSame(Hyde::path('_site/media/foo.png'), MediaFile::outputPath('foo.png'));
+        $this->assertSame(MediaFile::outputPath('foo.png'), MediaFile::outputPath('foo.png'));
     }
 
     public function testHelperForSiteOutputPath()
@@ -366,6 +357,35 @@ class FilesystemTest extends UnitTestCase
         foreach ($testStrings as $testString) {
             $this->assertSame(normalize_slashes($testString), Hyde::pathToRelative($testString));
         }
+    }
+
+    public function testAssetsMethodGetsAllSiteAssets()
+    {
+        $this->assertEquals(new Collection([
+            'app.css' => new MediaFile('_media/app.css'),
+        ]), $this->filesystem->assets());
+    }
+
+    public function testAssetsMethodGetsAllSiteAssetsAsArray()
+    {
+        $assets = $this->filesystem->assets()->toArray();
+
+        $assets['app.css']['length'] = 123;
+
+        $this->assertSame([
+            'app.css' => [
+                'name' => 'app.css',
+                'path' => '_media/app.css',
+                'length' => 123,
+                'mimeType' => 'text/css',
+                'hash' => hash_file('crc32', Hyde::path('_media/app.css')),
+            ],
+        ], $assets);
+    }
+
+    public function testAssetsMethodReturnsAssetCollectionSingleton()
+    {
+        $this->assertSame($this->filesystem->assets(), $this->filesystem->assets());
     }
 
     public function testFindFileMethodFindsFilesInDirectory()

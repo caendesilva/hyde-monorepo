@@ -121,21 +121,32 @@ Here are the default settings:
 
 ### Authors
 
-Hyde has support for adding authors in front matter, for example to automatically add a link to your website or social media profiles.
-However, it's tedious to have to add those to each and every post you make, and keeping them updated is even harder.
+Hyde supports adding authors to blog posts, allowing you to automatically include information like display names and website links.
+We even support fields for avatars, biographies, and social media profiles, which you can use in your custom Blade templates.
 
+While you can set all this data directly in the [front matter](blog-posts#author), that quickly becomes tedious and hard to maintain.
 Instead, you can predefine authors in the Hyde config. When writing posts, just specify the username in the front matter,
 and the rest of the data will be pulled from a matching entry found in the configuration file.
 
-#### Example
+#### Configuration
+
+Authors are defined in the `config/hyde.php` file under the `authors` key. Each author is keyed by their username and is configured using the `Author::create()` method:
 
 ```php
 // filepath: config/hyde.php
 'authors' => [
-    Author::create(
-        username: 'mr_hyde', // Required username
-        name: 'Mr. Hyde', // Optional display name
-        website: 'https://hydephp.com' // Optional website URL
+    'mr_hyde' => Author::create(
+        // The following fields, along with the username, are used by the default blog post templates.
+        name: 'Mr. Hyde',
+        website: 'https://hydephp.com',
+
+        // These fields are not currently used in the default templates, but you can use them in your custom views.
+        bio: 'The mysterious author of HydePHP',
+        avatar: 'avatar.png',
+        socials: [
+            'twitter' => '@HydeFramework',
+            'github' => 'hydephp',
+        ],
     ),
 ],
 ```
@@ -147,13 +158,36 @@ author:
     username: mr_hyde
     name: Mr. Hyde
     website: https://hydephp.com
+    bio: The mysterious author of HydePHP
+    avatar: avatar.png
+    socials:
+        twitter: "@HydeFramework"
+        github: hydephp
 ```
 
-But you only have to specify the username:
+But you only have to specify the username to get all the other data.
 
 ```yaml
 author: mr_hyde
 ```
+
+If you want to override the data for a specific post, you can do so in the [front matter](blog-posts#author) which is great for guest authors or one-off posts.
+
+#### Available Fields
+
+- `name`: The author's display name (optional, generated from username if not provided)
+- `website`: The author's website URL (optional)
+- `bio`: A short biography (optional, not used in default templates)
+- `avatar`: Path to the author's avatar image (optional, not used in default templates)
+- `socials`: An array of social media links (optional, not used in default templates)
+
+#### Notes
+
+- Usernames are automatically normalized (converted to lowercase with spaces replaced by underscores)
+- The `PostAuthor` class includes a `getPosts()` method to retrieve all posts by an author
+- Authors can be accessed through `Hyde::authors()`
+
+For more advanced usage and customization, refer to the [source code](https://github.com/hydephp/framework/blob/master/src/Framework/Features/Blogging/Models/PostAuthor.php) which is well documented.
 
 ### Footer
 
@@ -249,15 +283,18 @@ Still, you will likely want to customize some parts of these menus, and thankful
 
 - To customize the navigation menu, use the setting `navigation.order` in the `hyde.php` config.
 - When customizing the navigation menu, you should use the [route key](core-concepts#route-keys) of the page.
+- You can use either a basic list array or specify explicit priorities.
 
 Learn more in the [Navigation Menu](navigation) documentation.
 
 #### Customizing the documentation sidebar
 
-- To customize the sidebar, use the setting `sidebar_order` in the `docs.php` config.
-- When customizing the sidebar, can use the route key, or just the [page identifier](core-concepts#page-identifiers) of the page.
+- To customize the sidebar, use the setting `sidebar.order` in the `docs.php` config.
+- When customizing the sidebar, you can use the route key, or just the [page identifier](core-concepts#page-identifiers) of the page.
+- Similar to the navigation menu, you can use a basic list array or specify explicit priorities.
+- You can also use front matter in individual documentation pages to customize their appearance and behavior in the sidebar.
 
-Learn more in the [Documentation Pages](documentation-pages) documentation.
+Learn more in the [Documentation Pages](documentation-pages#sidebar) documentation.
 
 ## Additional Advanced Options
 
@@ -305,20 +342,6 @@ Specifies the path where the build manifest should be saved, relative to the pro
 'build_manifest_path' => 'app/storage/framework/cache/build-manifest.json',
 ```
 
-### `hydefront_version` and `hydefront_cdn_url`
-
-These options allow you to specify the HydeFront version and CDN URL when loading `app.css` from the CDN.
-
-Only change these if you know what you're doing as some versions may be incompatible with your Hyde version.
-
-```php
-// filepath config/hyde.php
-use \Hyde\Framework\Services\AssetService;
-
-'hydefront_version' => AssetService::HYDEFRONT_VERSION,
-'hydefront_cdn_url' => AssetService::HYDEFRONT_CDN_URL,
-```
-
 ### `theme_toggle_buttons`
 
 >info This feature was added in HydePHP v1.7.0
@@ -346,6 +369,8 @@ php hyde publish:views
 ```
 
 The files will then be available in the `resources/views/vendor/hyde` directory.
+
+>info **Tip:** If you use Linux/macOS or Windows with WSL you will be able to interactively select individual files to publish.
 
 ## Frontend Styles
 

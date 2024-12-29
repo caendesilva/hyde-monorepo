@@ -2,11 +2,6 @@
   "name": "hydefront",
   "version": "3.4.1",
   "description": "Frontend assets for HydePHP",
-  "scripts": {
-    "prod": "sass hyde.scss dist/hyde.css --style=compressed && php .github/scripts/post-build.php --inject-version",
-    "dev": "sass hyde.scss dist/hyde.css",
-    "watch": "sass hyde.scss dist/hyde.css --watch"
-  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/hydephp/hydefront.git"
@@ -21,9 +16,5 @@
   "bugs": {
     "url": "https://github.com/hydephp/hydefront/issues"
   },
-  "homepage": "https://github.com/hydephp/hydefront#readme",
-  "devDependencies": {
-    "sass": "1.83.0"
-  },
-  "main": "dist/hyde.css"
+  "homepage": "https://github.com/hydephp/hydefront#readme"
 }

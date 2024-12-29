@@ -10,7 +10,9 @@ use Hyde\Pages\MarkdownPost;
 use Hyde\Pages\DocumentationPage;
 use Hyde\Markdown\Models\FrontMatter;
 use Hyde\Framework\Factories\Concerns\CoreDataObject;
+use Hyde\Framework\Features\Navigation\NavigationMenu;
 use Hyde\Markdown\Contracts\FrontMatter\SubSchemas\NavigationSchema;
+use Hyde\Framework\Features\Navigation\NumericalPageOrderingHelper;
 
 use function basename;
 use function array_flip;
@@ -29,9 +31,6 @@ class NavigationDataFactory extends Concerns\PageDataFactory implements Navigati
      * Note that this represents a sub-schema, and is used as part of the page schema.
      */
     final public const SCHEMA = NavigationSchema::NAVIGATION_SCHEMA;
-
-    protected const FALLBACK_PRIORITY = 999;
-    protected const CONFIG_OFFSET = 500;
 
     protected readonly ?string $label;
     protected readonly ?string $group;
@@ -73,7 +72,7 @@ class NavigationDataFactory extends Concerns\PageDataFactory implements Navigati
     protected function makeLabel(): ?string
     {
         return $this->searchForLabelInFrontMatter()
-            ?? $this->searchForLabelInConfig()
+            ?? $this->searchForLabelInConfigs()
             ?? $this->getMatter('title')
             ?? $this->title;
     }
@@ -81,17 +80,19 @@ class NavigationDataFactory extends Concerns\PageDataFactory implements Navigati
     protected function makeGroup(): ?string
     {
         if ($this->pageIsInSubdirectory() && $this->canUseSubdirectoryForGroups()) {
-            return $this->getSubdirectoryName();
+            return NumericalPageOrderingHelper::hasNumericalPrefix($this->getSubdirectoryName())
+                ? NumericalPageOrderingHelper::splitNumericPrefix($this->getSubdirectoryName())[1]
+                : $this->getSubdirectoryName();
         }
 
-        return $this->searchForGroupInFrontMatter() ?? $this->defaultGroup();
+        return $this->searchForGroupInFrontMatter();
     }
 
     protected function makeHidden(): bool
     {
         return $this->isInstanceOf(MarkdownPost::class)
             || $this->searchForHiddenInFrontMatter()
-            || $this->isPageHiddenInNavigationConfiguration()
+            || $this->searchForHiddenInConfigs()
             || $this->isNonDocumentationPageInHiddenSubdirectory();
     }
 
@@ -99,7 +100,8 @@ class NavigationDataFactory extends Concerns\PageDataFactory implements Navigati
     {
         return $this->searchForPriorityInFrontMatter()
             ?? $this->searchForPriorityInConfigs()
-            ?? self::FALLBACK_PRIORITY;
+            ?? $this->checkFilePrefixForOrder()
+            ?? NavigationMenu::LAST;
     }
 
     private function searchForLabelInFrontMatter(): ?string
@@ -120,9 +122,27 @@ class NavigationDataFactory extends Concerns\PageDataFactory implements Navigati
             ?? $this->invert($this->getMatter('navigation.visible'));
     }
 
+    private function searchForHiddenInConfigs(): ?bool
+    {
+        return $this->isInstanceOf(DocumentationPage::class)
+            ? $this->isPageHiddenInSidebarConfiguration()
+            : $this->isPageHiddenInNavigationConfiguration();
+    }
+
     private function isPageHiddenInNavigationConfiguration(): bool
     {
         return in_array($this->routeKey, Config::getArray('hyde.navigation.exclude', ['404']));
+    }
+
+    private function isPageHiddenInSidebarConfiguration(): ?bool
+    {
+        $config = Config::getArray('docs.sidebar.exclude', ['404']);
+
+        return
+            // Check if the page is hidden from the sidebar by route key or identifier.
+            (in_array($this->routeKey, $config) || in_array($this->identifier, $config))
+            // Check if the page is hidden from the main navigation by its route key.
+            || $this->isPageHiddenInNavigationConfiguration();
     }
 
     private function isNonDocumentationPageInHiddenSubdirectory(): bool
@@ -139,7 +159,14 @@ class NavigationDataFactory extends Concerns\PageDataFactory implements Navigati
             ?? $this->getMatter('navigation.order');
     }
 
-    private function searchForLabelInConfig(): ?string
+    private function searchForLabelInConfigs(): ?string
+    {
+        return $this->isInstanceOf(DocumentationPage::class)
+            ? $this->searchForLabelInSidebarConfig()
+            : $this->searchForLabelInNavigationConfig();
+    }
+
+    private function searchForLabelInNavigationConfig(): ?string
     {
         /** @var array<string, string> $config */
         $config = Config::getArray('hyde.navigation.labels', [
@@ -148,6 +175,16 @@ class NavigationDataFactory extends Concerns\PageDataFactory implements Navigati
         ]);
 
         return $config[$this->routeKey] ?? null;
+    }
+
+    private function searchForLabelInSidebarConfig(): ?string
+    {
+        /** @var array<string>|array<string, string> $config */
+        $config = Config::getArray('docs.sidebar.labels', [
+            DocumentationPage::homeRouteName() => 'Docs',
+        ]);
+
+        return $config[$this->routeKey] ?? $config[$this->identifier] ?? null;
     }
 
     private function searchForPriorityInConfigs(): ?int
@@ -160,7 +197,7 @@ class NavigationDataFactory extends Concerns\PageDataFactory implements Navigati
     private function searchForPriorityInSidebarConfig(): ?int
     {
         /** @var array<string>|array<string, int> $config */
-        $config = Config::getArray('docs.sidebar_order', []);
+        $config = Config::getArray('docs.sidebar.order', []);
 
         return
             // For consistency with the navigation config.
@@ -199,22 +236,30 @@ class NavigationDataFactory extends Concerns\PageDataFactory implements Navigati
 
             return $this->offset(
                 array_flip($config)[$pageKey] ?? null,
-                self::CONFIG_OFFSET
+                NavigationMenu::DEFAULT
             );
         }
 
         return $config[$pageKey] ?? null;
     }
 
+    private function checkFilePrefixForOrder(): ?int
+    {
+        if (! $this->isInstanceOf(DocumentationPage::class)) {
+            return null;
+        }
+
+        if (! NumericalPageOrderingHelper::hasNumericalPrefix($this->identifier)) {
+            return null;
+        }
+
+        return NumericalPageOrderingHelper::splitNumericPrefix($this->identifier)[0];
+    }
+
     private function canUseSubdirectoryForGroups(): bool
     {
         return $this->getSubdirectoryConfiguration() === 'dropdown'
             || $this->isInstanceOf(DocumentationPage::class);
-    }
-
-    private function defaultGroup(): ?string
-    {
-        return $this->isInstanceOf(DocumentationPage::class) ? 'other' : null;
     }
 
     private function pageIsInSubdirectory(): bool
@@ -229,7 +274,7 @@ class NavigationDataFactory extends Concerns\PageDataFactory implements Navigati
 
     protected function getSubdirectoryConfiguration(): string
     {
-        return Config::getString('hyde.navigation.subdirectories', 'hidden');
+        return Config::getString('hyde.navigation.subdirectory_display', 'hidden');
     }
 
     /** @param class-string<\Hyde\Pages\Concerns\HydePage> $class */

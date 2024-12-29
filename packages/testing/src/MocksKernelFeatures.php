@@ -42,11 +42,13 @@ trait MocksKernelFeatures
         return $this;
     }
 
-    protected function setupTestKernel(): void
+    protected function setupTestKernel(): TestKernel
     {
         $this->kernel = new TestKernel();
 
         HydeKernel::setInstance($this->kernel);
+
+        return $this->kernel;
     }
 }
 

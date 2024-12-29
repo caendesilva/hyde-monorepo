@@ -12,7 +12,7 @@ use SimpleXMLElement;
 use Hyde\Facades\Site;
 use Hyde\Facades\Config;
 use Hyde\Pages\MarkdownPost;
-use Hyde\Support\Filesystem\MediaFile;
+use Hyde\Facades\Filesystem;
 use Hyde\Framework\Features\Blogging\Models\FeaturedImage;
 
 use function date;
@@ -108,7 +108,7 @@ class RssFeedGenerator extends BaseXmlGenerator
 
     protected function getImageType(FeaturedImage $image): string
     {
-        return (new MediaFile($image->getSource()))->getMimeType();
+        return Filesystem::findMimeType($image->getSource());
     }
 
     /** @return numeric-string */

@@ -33,10 +33,10 @@ class DefaultContentTest extends UnitTestCase
     {
         $this->assertFileExists(Hyde::path('_media/app.css'));
 
-        $this->assertStringContainsString(
-            'https://tailwindcss.com',
-            file_get_contents(Hyde::path('_media/app.css'))
-        );
+        $contents = file_get_contents(Hyde::path('_media/app.css'));
+
+        $this->assertStringContainsString('--tw-', $contents);
+        $this->assertStringContainsString('--tw-prose-', $contents);
     }
 
     public function testLaravelMixResourcesArePresent()

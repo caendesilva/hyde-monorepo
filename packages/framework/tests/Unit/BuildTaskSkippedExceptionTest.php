@@ -39,7 +39,7 @@ class BuildTaskSkippedExceptionTest extends UnitTestCase
     {
         $exception = new BuildTaskSkippedException();
 
-        $this->assertSame(0, $exception->getCode());
+        $this->assertSame(3, $exception->getCode());
     }
 
     public function testCustomExceptionCode()

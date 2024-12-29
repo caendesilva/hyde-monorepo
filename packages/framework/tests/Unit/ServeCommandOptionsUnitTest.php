@@ -335,6 +335,17 @@ class ServeCommandOptionsUnitTest extends UnitTestCase
         $this->assertNull($this->getMock()->getOpenCommand('UnknownOS'));
     }
 
+    public function testWithViteArgument()
+    {
+        HydeKernel::setInstance(new HydeKernel());
+
+        $command = $this->getViteServeCommandMock(['vite' => true]);
+
+        $command->safeHandle();
+
+        $this->assertTrue($command->viteProcessStarted);
+    }
+
     protected function getTestRunnerBinary(): string
     {
         return match (PHP_OS_FAMILY) {
@@ -367,12 +378,46 @@ class ServeCommandOptionsUnitTest extends UnitTestCase
 
             protected function runServerProcess(string $command): void
             {
+                $this->server = Mockery::mock(\Illuminate\Contracts\Process\InvokedProcess::class);
+                $this->server->shouldReceive('running')->once()->andReturn(false);
             }
 
             protected function openInBrowser(string $path = '/'): void
             {
                 $this->openInBrowserCalled = true;
                 $this->openInBrowserPath = $path;
+            }
+        };
+    }
+
+    protected function getViteServeCommandMock(array $arguments): ServeCommandMock
+    {
+        return new class($arguments) extends ServeCommandMock
+        {
+            public bool $viteProcessStarted = false;
+
+            // Void unrelated methods
+            protected function configureOutput(): void
+            {
+            }
+
+            protected function printStartMessage(): void
+            {
+            }
+
+            protected function runServerProcess(string $command): void
+            {
+                $this->server = Mockery::mock(\Illuminate\Contracts\Process\InvokedProcess::class);
+                $this->server->shouldReceive('running')->once()->andReturn(false);
+            }
+
+            protected function runViteProcess(): void
+            {
+                $this->viteProcessStarted = true;
+            }
+
+            protected function openInBrowser(string $path = '/'): void
+            {
             }
         };
     }

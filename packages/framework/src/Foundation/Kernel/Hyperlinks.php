@@ -5,17 +5,14 @@ declare(strict_types=1);
 namespace Hyde\Foundation\Kernel;
 
 use Hyde\Facades\Config;
+use BadMethodCallException;
 use Hyde\Support\Models\Route;
 use Hyde\Foundation\HydeKernel;
-use JetBrains\PhpStorm\Deprecated;
-use Hyde\Framework\Exceptions\BaseUrlNotSetException;
-use Hyde\Framework\Exceptions\FileNotFoundException;
-use Illuminate\Support\Str;
+use Hyde\Support\Filesystem\MediaFile;
 
 use function str_ends_with;
 use function str_starts_with;
 use function substr_count;
-use function file_exists;
 use function str_replace;
 use function str_repeat;
 use function substr;
@@ -89,43 +86,17 @@ class Hyperlinks
     }
 
     /**
-     * Gets a relative web link to the given file stored in the _site/media folder.
+     * Gets a MediaAsset instance for the given file stored in the `_site/media` folder.
+     * The returned value can be cast into a string in Blade views to resole the URL.
      *
-     * An exception will be thrown if the file does not exist in the _media directory,
-     * and the second argument is set to true.
+     * If a base URL is configured, the image will be returned with a qualified absolute URL.
+     * Otherwise, a relative path will be returned based on the rendered page's location.
      *
-     * @deprecated This method will be removed in v2.0. Please use `asset()` instead.
+     * @throws \Hyde\Framework\Exceptions\FileNotFoundException If the file does not exist in the `_media` source directory.
      */
-    #[Deprecated(reason: 'Use `asset` method instead.', replacement: '%class%->asset(%parameter0%)')]
-    public function mediaLink(string $destination, bool $validate = false): string
+    public function asset(string $name): MediaFile
     {
-        if ($validate && ! file_exists($sourcePath = "{$this->kernel->getMediaDirectory()}/$destination")) {
-            throw new FileNotFoundException($sourcePath);
-        }
-
-        return $this->relativeLink("{$this->kernel->getMediaOutputDirectory()}/$destination");
-    }
-
-    /**
-     * Gets a relative web link to the given image stored in the _site/media folder.
-     * If the image is remote (starts with http) it will be returned as is.
-     *
-     * If true is passed as the second argument, and a base URL is set,
-     * the image will be returned with a qualified absolute URL.
-     */
-    public function asset(string $name, bool $preferQualifiedUrl = false): string
-    {
-        if (static::isRemote($name)) {
-            return $name;
-        }
-
-        $name = Str::start($name, "{$this->kernel->getMediaOutputDirectory()}/");
-
-        if ($preferQualifiedUrl && $this->hasSiteUrl()) {
-            return $this->url($name);
-        }
-
-        return $this->relativeLink($name);
+        return MediaFile::get($name);
     }
 
     /**
@@ -144,8 +115,9 @@ class Hyperlinks
      * Return a qualified URL to the supplied path if a base URL is set.
      *
      * @param  string  $path  An optional relative path suffix. Omit to return the base URL.
+     * @return string The qualified URL, or the base URL if no path is supplied.
      *
-     * @throws BaseUrlNotSetException If no site URL is set and no path is provided.
+     * @throws BadMethodCallException If the site URL is not set in the configuration and no path is supplied.
      */
     public function url(string $path = ''): string
     {
@@ -165,9 +137,8 @@ class Hyperlinks
             return $path;
         }
 
-        // User is trying to get the base URL, but it's not set
-        // This exception is deprecated and will be removed in v2.0.0, and we will throw a BadMethodCallException instead.
-        throw new BaseUrlNotSetException();
+        // User is trying to get the base URL, but it's not set, so we throw an exception.
+        throw new BadMethodCallException('The site URL is not set in the configuration.');
     }
 
     /**

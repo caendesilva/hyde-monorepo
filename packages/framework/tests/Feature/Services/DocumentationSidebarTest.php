@@ -7,20 +7,27 @@ namespace Hyde\Framework\Testing\Feature\Services;
 use Hyde\Facades\Filesystem;
 use Hyde\Foundation\Facades\Routes;
 use Hyde\Framework\Actions\ConvertsArrayToFrontMatter;
+use Hyde\Framework\Features\Navigation\NavigationGroup;
 use Hyde\Framework\Features\Navigation\DocumentationSidebar;
-use Hyde\Framework\Features\Navigation\NavItem;
+use Hyde\Framework\Features\Navigation\NavigationItem;
 use Hyde\Hyde;
 use Hyde\Pages\DocumentationPage;
 use Hyde\Support\Facades\Render;
 use Hyde\Testing\TestCase;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\File;
+use Hyde\Framework\Features\Navigation\NavigationMenuGenerator;
 
 /**
  * @covers \Hyde\Framework\Features\Navigation\DocumentationSidebar
+ * @covers \Hyde\Framework\Features\Navigation\NavigationMenuGenerator
+ * @covers \Hyde\Framework\Features\Navigation\NavigationMenu
  * @covers \Hyde\Framework\Factories\Concerns\HasFactory
  * @covers \Hyde\Framework\Factories\NavigationDataFactory
- * @covers \Hyde\Framework\Features\Navigation\NavItem
+ * @covers \Hyde\Framework\Features\Navigation\NavigationItem
+ *
+ * @see \Hyde\Framework\Testing\Unit\DocumentationSidebarUnitTest
+ * @see \Hyde\Framework\Testing\Unit\DocumentationSidebarGetActiveGroupUnitTest
  */
 class DocumentationSidebarTest extends TestCase
 {
@@ -40,7 +47,7 @@ class DocumentationSidebarTest extends TestCase
 
     public function testSidebarCanBeCreated()
     {
-        $sidebar = DocumentationSidebar::create();
+        $sidebar = NavigationMenuGenerator::handle(DocumentationSidebar::class);
 
         $this->assertInstanceOf(DocumentationSidebar::class, $sidebar);
     }
@@ -49,9 +56,9 @@ class DocumentationSidebarTest extends TestCase
     {
         $this->createTestFiles();
 
-        $sidebar = DocumentationSidebar::create();
+        $sidebar = NavigationMenuGenerator::handle(DocumentationSidebar::class);
 
-        $this->assertCount(5, $sidebar->items);
+        $this->assertCount(5, $sidebar->getItems());
     }
 
     public function testIndexPageIsRemovedFromSidebar()
@@ -59,8 +66,8 @@ class DocumentationSidebarTest extends TestCase
         $this->createTestFiles();
         Filesystem::touch('_docs/index.md');
 
-        $sidebar = DocumentationSidebar::create();
-        $this->assertCount(5, $sidebar->items);
+        $sidebar = NavigationMenuGenerator::handle(DocumentationSidebar::class);
+        $this->assertCount(5, $sidebar->getItems());
     }
 
     public function testFilesWithFrontMatterHiddenSetToTrueAreRemovedFromSidebar()
@@ -68,30 +75,30 @@ class DocumentationSidebarTest extends TestCase
         $this->createTestFiles();
         File::put(Hyde::path('_docs/test.md'), "---\nnavigation:\n    hidden: true\n---\n\n# Foo");
 
-        $sidebar = DocumentationSidebar::create();
-        $this->assertCount(5, $sidebar->items);
+        $sidebar = NavigationMenuGenerator::handle(DocumentationSidebar::class);
+        $this->assertCount(5, $sidebar->getItems());
     }
 
     public function testSidebarIsOrderedAlphabeticallyWhenNoOrderIsSetInConfig()
     {
-        Config::set('docs.sidebar_order', []);
+        Config::set('docs.sidebar.order', []);
         Filesystem::touch('_docs/a.md');
         Filesystem::touch('_docs/b.md');
         Filesystem::touch('_docs/c.md');
 
         $this->assertEquals(
             collect([
-                NavItem::fromRoute(Routes::get('docs/a'), priority: 999),
-                NavItem::fromRoute(Routes::get('docs/b'), priority: 999),
-                NavItem::fromRoute(Routes::get('docs/c'), priority: 999),
+                NavigationItem::create(Routes::get('docs/a'), priority: 999),
+                NavigationItem::create(Routes::get('docs/b'), priority: 999),
+                NavigationItem::create(Routes::get('docs/c'), priority: 999),
             ]),
-            DocumentationSidebar::create()->items
+            NavigationMenuGenerator::handle(DocumentationSidebar::class)->getItems()
         );
     }
 
     public function testSidebarIsOrderedByPriorityWhenPriorityIsSetInConfig()
     {
-        Config::set('docs.sidebar_order', [
+        Config::set('docs.sidebar.order', [
             'c',
             'b',
             'a',
@@ -102,11 +109,11 @@ class DocumentationSidebarTest extends TestCase
 
         $this->assertEquals(
             collect([
-                NavItem::fromRoute(Routes::get('docs/c'), priority: 250 + 250),
-                NavItem::fromRoute(Routes::get('docs/b'), priority: 250 + 251),
-                NavItem::fromRoute(Routes::get('docs/a'), priority: 250 + 252),
+                NavigationItem::create(Routes::get('docs/c'), priority: 250 + 250),
+                NavigationItem::create(Routes::get('docs/b'), priority: 250 + 251),
+                NavigationItem::create(Routes::get('docs/a'), priority: 250 + 252),
             ]),
-            DocumentationSidebar::create()->items
+            NavigationMenuGenerator::handle(DocumentationSidebar::class)->getItems()
         );
     }
 
@@ -114,38 +121,40 @@ class DocumentationSidebarTest extends TestCase
     {
         $this->makePage('foo', ['navigation.priority' => 25]);
 
-        $this->assertSame(25, DocumentationSidebar::create()->items->first()->priority);
+        $this->assertSame(25, NavigationMenuGenerator::handle(DocumentationSidebar::class)->getItems()->first()->getPriority());
     }
 
     public function testSidebarItemPrioritySetInConfigOverridesFrontMatter()
     {
         $this->makePage('foo', ['navigation.priority' => 25]);
 
-        Config::set('docs.sidebar_order', ['foo']);
+        Config::set('docs.sidebar.order', ['foo']);
 
-        $this->assertSame(25, DocumentationSidebar::create()->items->first()->priority);
+        $this->assertSame(25, NavigationMenuGenerator::handle(DocumentationSidebar::class)->getItems()->first()->getPriority());
     }
 
     public function testSidebarPrioritiesCanBeSetInBothFrontMatterAndConfig()
     {
-        Config::set('docs.sidebar_order', [
+        Config::set('docs.sidebar.order', [
             'first',
             'third',
             'second',
         ]);
+
         Filesystem::touch('_docs/first.md');
         Filesystem::touch('_docs/second.md');
+
         file_put_contents(Hyde::path('_docs/third.md'),
             (new ConvertsArrayToFrontMatter)->execute(['navigation.priority' => 250 + 300])
         );
 
         $this->assertEquals(
             collect([
-                NavItem::fromRoute(Routes::get('docs/first'), priority: 250 + 250),
-                NavItem::fromRoute(Routes::get('docs/second'), priority: 250 + 252),
-                NavItem::fromRoute(Routes::get('docs/third'), priority: 250 + 300),
+                NavigationItem::create(Routes::get('docs/first'), priority: 250 + 250),
+                NavigationItem::create(Routes::get('docs/second'), priority: 250 + 252),
+                NavigationItem::create(Routes::get('docs/third'), priority: 250 + 300),
             ]),
-            DocumentationSidebar::create()->items
+            NavigationMenuGenerator::handle(DocumentationSidebar::class)->getItems()
         );
     }
 
@@ -153,19 +162,21 @@ class DocumentationSidebarTest extends TestCase
     {
         $this->makePage('foo', ['navigation.group' => 'bar']);
 
-        $this->assertSame('bar', DocumentationSidebar::create()->items->first()->getGroup());
+        /** @var NavigationItem $item */
+        $item = collect(NavigationMenuGenerator::handle(DocumentationSidebar::class)->getItems()->first()->getItems())->first();
+        $this->assertSame('bar', $item->getPage()->navigationMenuGroup());
     }
 
     public function testHasGroupsReturnsFalseWhenThereAreNoGroups()
     {
-        $this->assertFalse(DocumentationSidebar::create()->hasGroups());
+        $this->assertFalse(NavigationMenuGenerator::handle(DocumentationSidebar::class)->hasGroups());
     }
 
     public function testHasGroupsReturnsTrueWhenThereAreGroups()
     {
         $this->makePage('foo', ['navigation.group' => 'bar']);
 
-        $this->assertTrue(DocumentationSidebar::create()->hasGroups());
+        $this->assertTrue(NavigationMenuGenerator::handle(DocumentationSidebar::class)->hasGroups());
     }
 
     public function testHasGroupsReturnsTrueWhenThereAreMultipleGroups()
@@ -173,7 +184,7 @@ class DocumentationSidebarTest extends TestCase
         $this->makePage('foo', ['navigation.group' => 'bar']);
         $this->makePage('bar', ['navigation.group' => 'baz']);
 
-        $this->assertTrue(DocumentationSidebar::create()->hasGroups());
+        $this->assertTrue(NavigationMenuGenerator::handle(DocumentationSidebar::class)->hasGroups());
     }
 
     public function testHasGroupsReturnsTrueWhenThereAreMultipleGroupsMixedWithDefaults()
@@ -182,91 +193,7 @@ class DocumentationSidebarTest extends TestCase
         $this->makePage('bar', ['navigation.group' => 'baz']);
         $this->makePage('baz');
 
-        $this->assertTrue(DocumentationSidebar::create()->hasGroups());
-    }
-
-    public function testGetGroupsReturnsEmptyArrayWhenThereAreNoGroups()
-    {
-        $this->assertSame([], DocumentationSidebar::create()->getGroups());
-    }
-
-    public function testGetGroupsReturnsArrayOfGroupsWhenThereAreGroups()
-    {
-        $this->makePage('foo', ['navigation.group' => 'bar']);
-
-        $this->assertSame(['bar'], DocumentationSidebar::create()->getGroups());
-    }
-
-    public function testGetGroupsReturnsArrayWithNoDuplicates()
-    {
-        $this->makePage('foo', ['navigation.group' => 'bar']);
-        $this->makePage('bar', ['navigation.group' => 'bar']);
-        $this->makePage('baz', ['navigation.group' => 'baz']);
-
-        $this->assertSame(['bar', 'baz'], DocumentationSidebar::create()->getGroups());
-    }
-
-    public function testGroupsAreSortedByLowestFoundPriorityInEachGroup()
-    {
-        $this->makePage('foo', ['navigation.group' => 'bar', 'navigation.priority' => 100]);
-        $this->makePage('bar', ['navigation.group' => 'bar', 'navigation.priority' => 200]);
-        $this->makePage('baz', ['navigation.group' => 'baz', 'navigation.priority' => 10]);
-
-        $this->assertSame(['baz', 'bar'], DocumentationSidebar::create()->getGroups());
-    }
-
-    public function testGetItemsInGroupReturnsEmptyCollectionWhenThereAreNoItems()
-    {
-        $this->assertEquals(collect(), DocumentationSidebar::create()->getItemsInGroup('foo'));
-    }
-
-    public function testGetItemsInGroupReturnsCollectionOfItemsInGroup()
-    {
-        $this->makePage('foo', ['navigation.group' => 'bar']);
-        $this->makePage('bar', ['navigation.group' => 'bar']);
-        $this->makePage('baz', ['navigation.group' => 'baz']);
-
-        $this->assertEquals(
-            collect([
-                NavItem::fromRoute(Routes::get('docs/bar'), priority: 999),
-                NavItem::fromRoute(Routes::get('docs/foo'), priority: 999),
-            ]),
-            DocumentationSidebar::create()->getItemsInGroup('bar')
-        );
-
-        $this->assertEquals(
-            collect([
-                NavItem::fromRoute(Routes::get('docs/baz'), priority: 999),
-            ]),
-            DocumentationSidebar::create()->getItemsInGroup('baz')
-        );
-    }
-
-    public function testGetItemsInGroupNormalizesGroupNameToSlugFormat()
-    {
-        $this->makePage('a', ['navigation.group' => 'foo bar']);
-        $this->makePage('b', ['navigation.group' => 'Foo Bar']);
-        $this->makePage('c', ['navigation.group' => 'foo-bar']);
-
-        $this->assertEquals(
-            collect([
-                NavItem::fromRoute(Routes::get('docs/a'), priority: 999),
-                NavItem::fromRoute(Routes::get('docs/b'), priority: 999),
-                NavItem::fromRoute(Routes::get('docs/c'), priority: 999),
-            ]),
-            DocumentationSidebar::create()->getItemsInGroup('Foo bar')
-        );
-    }
-
-    public function testGetItemsInGroupDoesNotIncludeItemsWithHiddenFrontMatter()
-    {
-        $this->makePage('a', ['navigation.hidden' => true, 'navigation.group' => 'foo']);
-        $this->makePage('b', ['navigation.group' => 'foo']);
-
-        $this->assertEquals(
-            collect([NavItem::fromRoute(Routes::get('docs/b'), priority: 999)]),
-            DocumentationSidebar::create()->getItemsInGroup('foo')
-        );
+        $this->assertTrue(NavigationMenuGenerator::handle(DocumentationSidebar::class)->hasGroups());
     }
 
     public function testGetItemsInGroupDoesNotIncludeDocsIndex()
@@ -275,27 +202,48 @@ class DocumentationSidebarTest extends TestCase
         Filesystem::touch('_docs/index.md');
 
         $this->assertEquals(
-            collect([NavItem::fromRoute(Routes::get('docs/foo'), priority: 999)]),
-            DocumentationSidebar::create()->items
+            collect([NavigationItem::create(Routes::get('docs/foo'), priority: 999)]),
+            NavigationMenuGenerator::handle(DocumentationSidebar::class)->getItems()
+        );
+    }
+
+    public function testGetActiveGroup()
+    {
+        $this->makePage('foo', ['navigation.group' => 'foo']);
+        $this->makePage('bar', ['navigation.group' => 'bar']);
+        $this->makePage('baz');
+
+        Render::setPage(new DocumentationPage(matter: ['navigation.group' => 'foo']));
+
+        $this->assertEquals(
+            NavigationGroup::create('Foo', [
+                NavigationItem::create(Routes::get('docs/foo'), priority: 999),
+            ]),
+            NavigationMenuGenerator::handle(DocumentationSidebar::class)->getActiveGroup()
         );
     }
 
     public function testIsGroupActiveReturnsFalseWhenSuppliedGroupIsNotActive()
     {
         Render::setPage(new DocumentationPage(matter: ['navigation.group' => 'foo']));
-        $this->assertFalse(DocumentationSidebar::create()->isGroupActive('bar'));
+        $mainNavigationMenu = NavigationMenuGenerator::handle(DocumentationSidebar::class);
+        $this->assertFalse('bar' === $this->getGroupKey($mainNavigationMenu));
     }
 
     public function testIsGroupActiveReturnsTrueWhenSuppliedGroupIsActive()
     {
+        $this->makePage('foo', ['navigation.group' => 'foo']);
         Render::setPage(new DocumentationPage(matter: ['navigation.group' => 'foo']));
-        $this->assertTrue(DocumentationSidebar::create()->isGroupActive('foo'));
+        $mainNavigationMenu = NavigationMenuGenerator::handle(DocumentationSidebar::class);
+        $this->assertTrue('foo' === $this->getGroupKey($mainNavigationMenu));
     }
 
     public function testIsGroupActiveReturnsTrueForDifferingCasing()
     {
+        $this->makePage('foo', ['navigation.group' => 'Foo Bar']);
         Render::setPage(new DocumentationPage(matter: ['navigation.group' => 'Foo Bar']));
-        $this->assertTrue(DocumentationSidebar::create()->isGroupActive('foo-bar'));
+        $mainNavigationMenu = NavigationMenuGenerator::handle(DocumentationSidebar::class);
+        $this->assertTrue('foo-bar' === $this->getGroupKey($mainNavigationMenu));
     }
 
     public function testIsGroupActiveReturnsTrueFirstGroupOfIndexPage()
@@ -306,10 +254,12 @@ class DocumentationSidebarTest extends TestCase
         $this->makePage('baz', ['navigation.group' => 'baz']);
 
         Render::setPage(DocumentationPage::get('index'));
-
-        $this->assertTrue(DocumentationSidebar::create()->isGroupActive('bar'));
-        $this->assertFalse(DocumentationSidebar::create()->isGroupActive('foo'));
-        $this->assertFalse(DocumentationSidebar::create()->isGroupActive('baz'));
+        $mainNavigationMenu2 = NavigationMenuGenerator::handle(DocumentationSidebar::class);
+        $this->assertTrue('bar' === $this->getGroupKey($mainNavigationMenu2));
+        $mainNavigationMenu1 = NavigationMenuGenerator::handle(DocumentationSidebar::class);
+        $this->assertFalse('foo' === $this->getGroupKey($mainNavigationMenu1));
+        $mainNavigationMenu = NavigationMenuGenerator::handle(DocumentationSidebar::class);
+        $this->assertFalse('baz' === $this->getGroupKey($mainNavigationMenu));
     }
 
     public function testIsGroupActiveReturnsTrueFirstSortedGroupOfIndexPage()
@@ -320,10 +270,12 @@ class DocumentationSidebarTest extends TestCase
         $this->makePage('baz', ['navigation.group' => 'baz', 'navigation.priority' => 3]);
 
         Render::setPage(DocumentationPage::get('index'));
-
-        $this->assertTrue(DocumentationSidebar::create()->isGroupActive('foo'));
-        $this->assertFalse(DocumentationSidebar::create()->isGroupActive('bar'));
-        $this->assertFalse(DocumentationSidebar::create()->isGroupActive('baz'));
+        $mainNavigationMenu2 = NavigationMenuGenerator::handle(DocumentationSidebar::class);
+        $this->assertTrue('foo' === $this->getGroupKey($mainNavigationMenu2));
+        $mainNavigationMenu1 = NavigationMenuGenerator::handle(DocumentationSidebar::class);
+        $this->assertFalse('bar' === $this->getGroupKey($mainNavigationMenu1));
+        $mainNavigationMenu = NavigationMenuGenerator::handle(DocumentationSidebar::class);
+        $this->assertFalse('baz' === $this->getGroupKey($mainNavigationMenu));
     }
 
     public function testAutomaticIndexPageGroupExpansionRespectsCustomNavigationMenuSettings()
@@ -334,28 +286,12 @@ class DocumentationSidebarTest extends TestCase
         $this->makePage('baz', ['navigation.group' => 'baz', 'navigation.priority' => 3]);
 
         Render::setPage(DocumentationPage::get('index'));
-
-        $this->assertFalse(DocumentationSidebar::create()->isGroupActive('foo'));
-        $this->assertFalse(DocumentationSidebar::create()->isGroupActive('bar'));
-        $this->assertTrue(DocumentationSidebar::create()->isGroupActive('baz'));
-    }
-
-    public function testMakeGroupTitleTurnsGroupKeyIntoTitle()
-    {
-        $this->assertSame('Hello World', DocumentationSidebar::create()->makeGroupTitle('hello world'));
-        $this->assertSame('Hello World', DocumentationSidebar::create()->makeGroupTitle('hello-world'));
-        $this->assertSame('Hello World', DocumentationSidebar::create()->makeGroupTitle('hello_world'));
-        $this->assertSame('Hello World', DocumentationSidebar::create()->makeGroupTitle('helloWorld'));
-    }
-
-    public function testMakeGroupTitleUsesConfiguredSidebarGroupLabelsWhenAvailable()
-    {
-        Config::set('docs.sidebar_group_labels', [
-            'example' => 'Hello world!',
-        ]);
-
-        $this->assertSame('Hello world!', DocumentationSidebar::create()->makeGroupTitle('example'));
-        $this->assertSame('Default', DocumentationSidebar::create()->makeGroupTitle('default'));
+        $mainNavigationMenu2 = NavigationMenuGenerator::handle(DocumentationSidebar::class);
+        $this->assertFalse('foo' === $this->getGroupKey($mainNavigationMenu2));
+        $mainNavigationMenu1 = NavigationMenuGenerator::handle(DocumentationSidebar::class);
+        $this->assertFalse('bar' === $this->getGroupKey($mainNavigationMenu1));
+        $mainNavigationMenu = NavigationMenuGenerator::handle(DocumentationSidebar::class);
+        $this->assertTrue('baz' === $this->getGroupKey($mainNavigationMenu));
     }
 
     public function testCanHaveMultipleGroupedPagesWithTheSameNameLabels()
@@ -363,29 +299,38 @@ class DocumentationSidebarTest extends TestCase
         $this->makePage('foo', ['navigation.group' => 'foo', 'navigation.label' => 'Foo']);
         $this->makePage('bar', ['navigation.group' => 'bar', 'navigation.label' => 'Foo']);
 
-        $sidebar = DocumentationSidebar::create();
-        $this->assertCount(2, $sidebar->items);
+        $sidebar = NavigationMenuGenerator::handle(DocumentationSidebar::class);
+        $this->assertCount(2, $sidebar->getItems());
 
         $this->assertEquals(
             collect([
-                NavItem::fromRoute(Routes::get('docs/bar'), priority: 999),
-                NavItem::fromRoute(Routes::get('docs/foo'), priority: 999),
+                NavigationGroup::create('Bar', [
+                    NavigationItem::create(Routes::get('docs/bar'), priority: 999),
+                ]),
+                NavigationGroup::create('Foo', [
+                    NavigationItem::create(Routes::get('docs/foo'), priority: 999),
+                ]),
             ]),
-            $sidebar->items
+            $sidebar->getItems()
         );
     }
 
-    public function testDuplicateLabelsWithinTheSameGroupIsRemoved()
+    public function testDuplicateLabelsWithinTheSameGroupAreNotRemoved()
     {
         $this->makePage('foo', ['navigation.group' => 'foo', 'navigation.label' => 'Foo']);
         $this->makePage('bar', ['navigation.group' => 'foo', 'navigation.label' => 'Foo']);
 
-        $sidebar = DocumentationSidebar::create();
-        $this->assertCount(1, $sidebar->items);
+        $sidebar = NavigationMenuGenerator::handle(DocumentationSidebar::class);
+        $this->assertCount(1, $sidebar->getItems());
 
         $this->assertEquals(
-            collect([NavItem::fromRoute(Routes::get('docs/bar'), priority: 999)]),
-            $sidebar->items
+            collect([
+                NavigationGroup::create('Foo', [
+                    NavigationItem::create(Routes::get('docs/bar'), priority: 999),
+                    NavigationItem::create(Routes::get('docs/foo'), priority: 999),
+                ]),
+            ]),
+            $sidebar->getItems()
         );
     }
 
@@ -394,47 +339,52 @@ class DocumentationSidebarTest extends TestCase
         $this->makePage('index');
 
         Render::setPage(DocumentationPage::get('index'));
-        $this->assertFalse(DocumentationSidebar::create()->isGroupActive('foo'));
+        $mainNavigationMenu = NavigationMenuGenerator::handle(DocumentationSidebar::class);
+        $this->assertFalse('foo' === $this->getGroupKey($mainNavigationMenu));
     }
 
     public function testIndexPageAddedToSidebarWhenItIsTheOnlyPage()
     {
         Filesystem::touch('_docs/index.md');
-        $sidebar = DocumentationSidebar::create();
+        $sidebar = NavigationMenuGenerator::handle(DocumentationSidebar::class);
 
-        $this->assertCount(1, $sidebar->items);
+        $this->assertCount(1, $sidebar->getItems());
         $this->assertEquals(
-            collect([NavItem::fromRoute(Routes::get('docs/index'))]),
-            $sidebar->items
+            collect([NavigationItem::create(Routes::get('docs/index'))]),
+            $sidebar->getItems()
         );
     }
 
     public function testIndexPageNotAddedToSidebarWhenOtherPagesExist()
     {
         $this->createTestFiles(1);
-
         Filesystem::touch('_docs/index.md');
-        $sidebar = DocumentationSidebar::create();
+        $sidebar = NavigationMenuGenerator::handle(DocumentationSidebar::class);
 
-        $this->assertCount(1, $sidebar->items);
+        $this->assertCount(1, $sidebar->getItems());
         $this->assertEquals(
-            collect([NavItem::fromRoute(Routes::get('docs/test-0'))]),
-            $sidebar->items
+            collect([NavigationItem::create(Routes::get('docs/test-0'))]),
+            $sidebar->getItems()
         );
     }
 
     protected function createTestFiles(int $count = 5): void
     {
         for ($i = 0; $i < $count; $i++) {
-            Filesystem::touch("_docs/test-{$i}.md");
+            Filesystem::touch('_docs/test-'.$i.'.md');
         }
     }
 
-    protected function makePage(string $name, array $matter = []): void
+    protected function makePage(string $name, ?array $matter = null): void
     {
         file_put_contents(
-            Hyde::path("_docs/{$name}.md"),
-            (new ConvertsArrayToFrontMatter)->execute($matter)
+            Hyde::path('_docs/'.$name.'.md'),
+            (new ConvertsArrayToFrontMatter)->execute($matter ?? [])
         );
+    }
+
+    protected function getGroupKey(DocumentationSidebar $menu): ?string
+    {
+        return $menu->getActiveGroup()?->getGroupKey();
     }
 }

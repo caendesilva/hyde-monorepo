@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Hyde\Foundation\Concerns;
 
+use Hyde\Foundation\HydeKernel;
 use Hyde\Foundation\Kernel\FileCollection;
 use Hyde\Foundation\Kernel\PageCollection;
 use Hyde\Foundation\Kernel\RouteCollection;
@@ -74,6 +75,24 @@ abstract class HydeExtension
      * will be injected, so that you can interact with it directly.
      */
     public function discoverRoutes(RouteCollection $collection): void
+    {
+        //
+    }
+
+    /**
+     * Register a callback to be run before the kernel is booted,
+     * which is before any file/page/route discovery has begun.
+     */
+    public function booting(HydeKernel $kernel): void
+    {
+        //
+    }
+
+    /**
+     * Register a callback to be run after the kernel is booted,
+     * which is after file/page/route discovery has completed.
+     */
+    public function booted(HydeKernel $kernel): void
     {
         //
     }

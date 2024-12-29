@@ -321,7 +321,7 @@
                                                             <strong title="{{ $mediaFile->getPath() }}">{{ $mediaFile->getName() }}</strong>
                                                         </p>
                                                         <div class="col px-0 text-nowrap">
-                                                            <small class="text-muted">({{ $dashboard::bytesToHuman($mediaFile->getContentLength()) }})</small>
+                                                            <small class="text-muted">({{ $dashboard::bytesToHuman($mediaFile->getLength()) }})</small>
                                                         </div>
                                                     </div>
                                                     <div class="row small align-items-center">

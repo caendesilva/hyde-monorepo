@@ -9,7 +9,7 @@ use Hyde\Console\Concerns\Command;
 use Hyde\Foundation\Facades\Pages;
 use Hyde\Framework\Actions\StaticPageBuilder;
 use Hyde\Framework\Features\BuildTasks\BuildTask;
-use Hyde\Framework\Services\BuildService;
+use Hyde\Framework\Actions\PreBuildTasks\TransferMediaAssets;
 use Hyde\Hyde;
 use Hyde\Pages\BladePage;
 use Hyde\Pages\DocumentationPage;
@@ -37,7 +37,7 @@ class RebuildPageCommand extends Command
     public function handle(): int
     {
         if ($this->argument('path') === Hyde::getMediaDirectory()) {
-            (new BuildService($this->getOutput()))->transferMediaAssets();
+            return (new TransferMediaAssets())->run($this->output);
 
             $this->info('All done!');
 

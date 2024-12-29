@@ -152,7 +152,7 @@ You can change the path to this directory by setting the `media_directory` optio
 
 #### Next steps
 
-1. Note that you will likely need to manually update `webpack.mix.js` so Laravel Mix can compile the assets correctly.
+1. Note that you will likely need to manually update `vite.config.js` so Vite can compile the assets correctly.
 2. You will of course also need to copy over any existing files from the old directory to the new one.
 
 #### Note that this setting affects both source and output directories

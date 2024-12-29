@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace Hyde\Framework\Testing\Feature;
 
-use Hyde\Enums\Feature;
 use Hyde\Facades\Features;
 use Hyde\Pages\DocumentationPage;
 use Hyde\Testing\TestCase;
+use Hyde\Enums\Feature;
 use Illuminate\Support\Facades\Config;
+use Hyde\Framework\Features\Navigation\MainNavigationMenu;
 
 /**
- * @covers \Hyde\Facades\Features::darkmode
  * @covers \Hyde\Facades\Features::hasDarkmode
  */
 class DarkmodeFeatureTest extends TestCase
@@ -22,14 +22,19 @@ class DarkmodeFeatureTest extends TestCase
 
         $this->mockRoute();
         $this->mockPage();
+
+        $this->app->instance('navigation.main', new MainNavigationMenu());
     }
 
-    public function testHasDarkmode()
+    public function testHasDarkmodeIsFalseWhenNotSet()
     {
         Config::set('hyde.features', []);
 
         $this->assertFalse(Features::hasDarkmode());
+    }
 
+    public function testHasDarkmodeIsTrueWhenSet()
+    {
         Config::set('hyde.features', [
             Feature::Darkmode,
         ]);
@@ -44,6 +49,8 @@ class DarkmodeFeatureTest extends TestCase
             Feature::BladePages,
             Feature::Darkmode,
         ]);
+
+        app()->instance('navigation.main', new MainNavigationMenu());
 
         $view = view('hyde::layouts/page')->with([
             'title' => 'foo',
@@ -80,6 +87,8 @@ class DarkmodeFeatureTest extends TestCase
             Feature::MarkdownPages,
             Feature::BladePages,
         ]);
+
+        app()->instance('navigation.main', new MainNavigationMenu());
 
         $view = view('hyde::layouts/page')->with([
             'title' => 'foo',

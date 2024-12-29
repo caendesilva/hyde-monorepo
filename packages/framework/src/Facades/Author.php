@@ -7,6 +7,8 @@ namespace Hyde\Facades;
 use Hyde\Framework\Features\Blogging\Models\PostAuthor;
 use Illuminate\Support\Collection;
 
+use function compact;
+
 /**
  * Allows you to easily add pre-defined authors for your blog posts.
  *
@@ -15,25 +17,27 @@ use Illuminate\Support\Collection;
 class Author
 {
     /**
-     * Construct a new Post Author. For Hyde to discover this author,
-     * you must call this method from your hyde.php config file.
+     * Configuration helper method to define a new blog post author, with better IDE support.
+     *
+     * The returned array will then be used by the framework to create a new PostAuthor instance.
      *
      * @see https://hydephp.com/docs/1.x/customization#authors
      *
-     * @param  string  $username  The username of the author. This is the key used to find authors in the config.
      * @param  string|null  $name  The optional display name of the author, leave blank to use the username.
      * @param  string|null  $website  The author's optional website URL. Website, Twitter, etc.
+     * @param  string|null  $bio  The author's optional biography text. Markdown supported.
+     * @param  string|null  $avatar  The author's optional avatar image. Supports both image names and full URIs.
+     * @param  array<string, string>|null  $socials  The author's optional social media links/handles.
      */
-    public static function create(string $username, ?string $name = null, ?string $website = null): PostAuthor
+    public static function create(?string $name = null, ?string $website = null, ?string $bio = null, ?string $avatar = null, ?array $socials = null): array
     {
-        return new PostAuthor($username, $name, $website);
+        return compact('name', 'website', 'bio', 'avatar', 'socials');
     }
 
     /**
-     * Get a Post Author instance from the config. If no author matching the username is found,
-     * a new Post Author instance will be created with just username supplied to the method.
+     * Get a Post Author instance by username, or null if not found.
      */
-    public static function get(string $username): PostAuthor
+    public static function get(string $username): ?PostAuthor
     {
         return PostAuthor::get($username);
     }

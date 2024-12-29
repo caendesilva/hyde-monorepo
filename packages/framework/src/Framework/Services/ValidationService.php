@@ -5,12 +5,13 @@ declare(strict_types=1);
 namespace Hyde\Framework\Services;
 
 use Hyde\Hyde;
-use Hyde\Enums\Feature;
 use Hyde\Facades\Config;
 use Hyde\Facades\Features;
 use Hyde\Pages\BladePage;
 use Hyde\Pages\MarkdownPage;
 use Hyde\Pages\DocumentationPage;
+use Hyde\Enums\Feature;
+use Hyde\Support\Filesystem\MediaFile;
 use Hyde\Support\Models\ValidationResult as Result;
 
 use function count;
@@ -102,12 +103,12 @@ class ValidationService
 
     public function check_site_has_an_app_css_stylesheet(Result $result): Result
     {
-        if (file_exists(Hyde::siteMediaPath('/app.css')) || file_exists(Hyde::mediaPath('app.css'))) {
+        if (file_exists(MediaFile::outputPath('/app.css')) || file_exists(MediaFile::sourcePath('app.css'))) {
             return $result->pass('Your site has an app.css stylesheet');
         }
 
         return $result->fail(sprintf('Could not find an app.css file in the %s or %s directory!',
-            Hyde::pathToRelative(Hyde::siteMediaPath()), Hyde::getMediaDirectory()
+            Hyde::pathToRelative(MediaFile::outputPath()), Hyde::getMediaDirectory()
         ))->withTip('You may need to run `npm run dev`.`');
     }
 
@@ -124,7 +125,7 @@ class ValidationService
 
     public function check_a_torchlight_api_token_is_set(Result $result): Result
     {
-        if (! Features::enabled(Feature::Torchlight)) {
+        if (! Features::has(Feature::Torchlight)) {
             return $result->skip('Check a Torchlight API token is set')
                 ->withTip('Torchlight is an API for code syntax highlighting. You can enable it in the Hyde config.');
         }

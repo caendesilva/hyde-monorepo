@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Hyde\Framework\Testing\Unit;
 
+use Hyde\Foundation\HydeKernel;
+use Illuminate\Support\Collection;
 use Hyde\Framework\Exceptions\FileNotFoundException;
 use Hyde\Framework\Features\Blogging\Models\FeaturedImage;
 use Hyde\Testing\UnitTestCase;
@@ -182,8 +184,16 @@ class FeaturedImageUnitTest extends UnitTestCase
 
     public function testFeaturedImageGetContentLengthWithNoSource()
     {
+        HydeKernel::setInstance(new class extends HydeKernel
+        {
+            public function assets(): Collection
+            {
+                return new Collection();
+            }
+        });
+
         $this->expectException(FileNotFoundException::class);
-        $this->expectExceptionMessage('Featured image [_media/foo] not found.');
+        $this->expectExceptionMessage('File [_media/foo] not found when trying to resolve a media asset.');
 
         $image = new FeaturedImage('_media/foo', ...self::ARGUMENTS);
         $this->assertSame(0, $image->getContentLength());

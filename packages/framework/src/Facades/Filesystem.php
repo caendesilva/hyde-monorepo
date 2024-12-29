@@ -144,6 +144,42 @@ class Filesystem
         return self::put(...func_get_args());
     }
 
+    /**
+     * Improved mime type detection for the given path that can be relative to the project root,
+     * or a remote URL where this will try to guess the mime type based on the file extension.
+     *
+     * @param  string  $path  The path to the file, relative to the project root or a remote URL.
+     */
+    public static function findMimeType(string $path): string
+    {
+        $extension = self::extension($path);
+
+        $lookup = [
+            'txt' => 'text/plain',
+            'md' => 'text/markdown',
+            'html' => 'text/html',
+            'css' => 'text/css',
+            'svg' => 'image/svg+xml',
+            'png' => 'image/png',
+            'jpg' => 'image/jpeg',
+            'jpeg' => 'image/jpeg',
+            'gif' => 'image/gif',
+            'json' => 'application/json',
+            'js' => 'application/javascript',
+            'xml' => 'application/xml',
+        ];
+
+        if (isset($lookup[$extension])) {
+            return $lookup[$extension];
+        }
+
+        if (extension_loaded('fileinfo') && self::exists($path)) {
+            return self::mimeType($path);
+        }
+
+        return 'text/plain';
+    }
+
     protected static function filesystem(): \Illuminate\Filesystem\Filesystem
     {
         return app(\Illuminate\Filesystem\Filesystem::class);

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Hyde\Markdown\Models;
 
 use Hyde\Framework\Services\MarkdownService;
-use Hyde\Markdown\MarkdownConverter;
 use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\HtmlString;
@@ -84,20 +83,16 @@ class Markdown implements Arrayable, Stringable, Htmlable
     /**
      * Render a Markdown string into HTML.
      *
-     * If a source model is provided, the Markdown will be converted using the dynamic MarkdownService,
-     * otherwise, the pre-configured singleton from the service container will be used instead.
+     * If a source page class is provided, that class will be used to configure
+     * the Hyde Markdown converter to enable features specific to that page.
      *
      * @return string $html
      */
     public static function render(string $markdown, ?string $pageClass = null): string
     {
-        if ($pageClass !== null) {
-            return (new MarkdownService($markdown, $pageClass))->parse();
-        } else {
-            /** @var MarkdownConverter $converter */
-            $converter = app(MarkdownConverter::class);
-
-            return (string) $converter->convert($markdown);
-        }
+        return app(MarkdownService::class, [
+            'markdown' => $markdown,
+            'pageClass' => $pageClass,
+        ])->parse();
     }
 }

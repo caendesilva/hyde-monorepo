@@ -347,7 +347,7 @@ class HydePageSerializableUnitTest extends UnitTestCase
                     "label": "",
                     "priority": 999,
                     "hidden": false,
-                    "group": "other"
+                    "group": null
                 },
                 "title": ""
             }

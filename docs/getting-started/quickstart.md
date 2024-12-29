@@ -68,7 +68,7 @@ on what kind of page it is. You don't have to worry about routing as Hyde takes 
 
 ### Managing assets
 
-Hyde comes bundled with a precompiled and minified `app.css` file, containing all the Tailwind you need for the default views meaning that you don't even need to use NPM. However, Hyde is already configured to use Laravel Mix to compile your assets if you feel like there's a need to build the assets yourself. See more on the [Managing Assets](managing-assets) page.
+Hyde comes bundled with a precompiled and minified `app.css` file, containing all the Tailwind you need for the default views meaning that you don't even need to use NPM. However, Hyde is already configured to use Vite to compile your assets if you feel like there's a need to build the assets yourself. See more on the [Managing Assets](managing-assets) page.
 
 ### Deploying your site
 

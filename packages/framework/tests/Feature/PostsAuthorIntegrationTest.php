@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Hyde\Framework\Testing\Feature;
 
 use Hyde\Facades\Author;
+use Hyde\Pages\MarkdownPost;
 use Hyde\Framework\Actions\CreatesNewMarkdownPostFile;
 use Hyde\Hyde;
 use Hyde\Testing\TestCase;
@@ -38,7 +39,7 @@ class PostsAuthorIntegrationTest extends TestCase
 
         // Check that the author is rendered as is in the DOM
         $this->assertStringContainsString(
-            '>test_undefined_author</span>',
+            '>Test Undefined Author</span>',
             file_get_contents(Hyde::path('_site/posts/post-with-undefined-author.html'))
         );
     }
@@ -51,7 +52,7 @@ class PostsAuthorIntegrationTest extends TestCase
         $this->createPostFile('post-with-defined-author-with-name', 'named_author');
 
         Config::set('hyde.authors', [
-            Author::create('named_author', 'Test Author', null),
+            'named_author' => Author::create('Test Author', null),
         ]);
 
         $this->artisan('rebuild _posts/post-with-defined-author-with-name.md')->assertExitCode(0);
@@ -72,7 +73,7 @@ class PostsAuthorIntegrationTest extends TestCase
         $this->createPostFile('post-with-defined-author-with-name', 'test_author_with_website');
 
         Config::set('hyde.authors', [
-            Author::create('test_author_with_website', 'Test Author', 'https://example.org'),
+            'test_author_with_website' => Author::create('Test Author', 'https://example.org'),
         ]);
 
         $this->artisan('rebuild _posts/post-with-defined-author-with-name.md')->assertExitCode(0);
@@ -89,6 +90,115 @@ class PostsAuthorIntegrationTest extends TestCase
             '<a href="https://example.org" rel="author" itemprop="url" aria-label="The author\'s website">',
             file_get_contents(Hyde::path('_site/posts/post-with-defined-author-with-name.html'))
         );
+    }
+
+    public function testAllPostAuthorFieldsCanBeSetInFrontMatter()
+    {
+        $this->file('_posts/post-with-all-author-fields.md', <<<'MD'
+            ---
+            author:
+                username: mr_hyde
+                name: Mr. Hyde
+                website: https://hydephp.com
+                bio: The mysterious author of HydePHP
+                avatar: avatar.png
+                socials:
+                    twitter: "@HydeFramework"
+                    github: hydephp
+            ---
+            
+            # Post with all author fields
+            MD
+        );
+
+        $this->artisan('rebuild _posts/post-with-all-author-fields.md')->assertExitCode(0);
+        $this->cleanUpWhenDone('_site/posts/post-with-all-author-fields.html');
+        $this->assertFileExists(Hyde::path('_site/posts/post-with-all-author-fields.html'));
+
+        $page = MarkdownPost::get('post-with-all-author-fields');
+        $this->assertNotNull($page);
+        $this->assertNotNull($page->author);
+
+        $this->assertSame([
+            'username' => 'mr_hyde',
+            'name' => 'Mr. Hyde',
+            'website' => 'https://hydephp.com',
+            'bio' => 'The mysterious author of HydePHP',
+            'avatar' => 'avatar.png',
+            'socials' => [
+                'twitter' => '@HydeFramework',
+                'github' => 'hydephp',
+            ],
+        ], $page->author->toArray());
+    }
+
+    public function testConfiguredPostAuthorFieldsCanBeOverriddenInFrontMatter()
+    {
+        Config::set('hyde.authors', [
+            'mr_hyde' => Author::create(
+                name: 'Mr. Hyde',
+                website: 'https://hydephp.com',
+                bio: 'The mysterious author of HydePHP',
+                avatar: 'avatar.png',
+                socials: [
+                    'twitter' => '@HydeFramework',
+                    'github' => 'hydephp',
+                ],
+            ),
+        ]);
+
+        $this->file('_posts/literal.md', <<<'MD'
+            ---
+            author: mr_hyde
+            ---
+            
+            # Using the configured author
+            MD
+        );
+
+        $this->file('_posts/changed.md', <<<'MD'
+            ---
+            author:
+                username: mr_hyde
+                name: Dr. Jekyll
+            ---
+            
+            # Modifying the configured author
+            MD
+        );
+
+        $this->artisan('rebuild _posts/literal.md')->assertExitCode(0);
+        $this->artisan('rebuild _posts/changed.md')->assertExitCode(0);
+        $this->assertFileExists(Hyde::path('_site/posts/literal.html'));
+        $this->assertFileExists(Hyde::path('_site/posts/changed.html'));
+        $this->cleanUpWhenDone('_site/posts/literal.html');
+        $this->cleanUpWhenDone('_site/posts/changed.html');
+
+        $page = MarkdownPost::get('literal');
+        $this->assertNotNull($page);
+        $this->assertNotNull($page->author);
+
+        $this->assertSame([
+            'username' => 'mr_hyde',
+            'name' => 'Mr. Hyde',
+            'website' => 'https://hydephp.com',
+            'bio' => 'The mysterious author of HydePHP',
+            'avatar' => 'avatar.png',
+            'socials' => [
+                'twitter' => '@HydeFramework',
+                'github' => 'hydephp',
+            ],
+        ], $page->author->toArray());
+
+        $page = MarkdownPost::get('changed');
+        $this->assertNotNull($page);
+        $this->assertNotNull($page->author);
+
+        $this->assertSame([
+            'username' => 'mr_hyde',
+            'name' => 'Dr. Jekyll',
+            // The original fields are not overwritten
+        ], $page->author->toArray());
     }
 
     protected function createPostFile(string $title, string $author): void

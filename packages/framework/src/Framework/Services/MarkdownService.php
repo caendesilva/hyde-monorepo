@@ -6,13 +6,15 @@ namespace Hyde\Framework\Services;
 
 use Hyde\Facades\Config;
 use Hyde\Facades\Features;
+use Hyde\Markdown\Models\MarkdownDocument;
+use Hyde\Markdown\Processing\HeadingRenderer;
 use Hyde\Framework\Concerns\Internal\SetsUpMarkdownConverter;
 use Hyde\Pages\DocumentationPage;
 use Hyde\Markdown\MarkdownConverter;
 use Hyde\Markdown\Contracts\MarkdownPreProcessorContract as PreProcessor;
 use Hyde\Markdown\Contracts\MarkdownPostProcessorContract as PostProcessor;
-use League\CommonMark\Extension\HeadingPermalink\HeadingPermalinkExtension;
 use League\CommonMark\Extension\DisallowedRawHtml\DisallowedRawHtmlExtension;
+use League\CommonMark\Extension\CommonMark\Node\Block\Heading;
 
 use function str_contains;
 use function str_replace;
@@ -53,6 +55,9 @@ class MarkdownService
     /** @var array<class-string<\Hyde\Markdown\Contracts\MarkdownPostProcessorContract>> */
     protected array $postprocessors = [];
 
+    /** @var array<string> Tracks all the headings in the document to ensure identifiers are unique */
+    protected array $headingRegistry = [];
+
     public function __construct(string $markdown, ?string $pageClass = null)
     {
         $this->pageClass = $pageClass;
@@ -85,6 +90,8 @@ class MarkdownService
         foreach ($this->extensions as $extension) {
             $this->initializeExtension($extension);
         }
+
+        $this->configureCustomHeadingRenderer();
 
         $this->registerPreProcessors();
         $this->registerPostProcessors();
@@ -140,13 +147,6 @@ class MarkdownService
         return $this;
     }
 
-    public function withPermalinks(): static
-    {
-        $this->addFeature('permalinks');
-
-        return $this;
-    }
-
     public function isDocumentationPage(): bool
     {
         return isset($this->pageClass) && $this->pageClass === DocumentationPage::class;
@@ -165,19 +165,6 @@ class MarkdownService
             Features::hasTorchlight();
     }
 
-    public function canEnablePermalinks(): bool
-    {
-        if ($this->hasFeature('permalinks')) {
-            return true;
-        }
-
-        if ($this->isDocumentationPage() && DocumentationPage::hasTableOfContents()) {
-            return true;
-        }
-
-        return false;
-    }
-
     public function hasFeature(string $feature): bool
     {
         return in_array($feature, $this->features);
@@ -186,6 +173,7 @@ class MarkdownService
     protected function determineIfTorchlightAttributionShouldBeInjected(): bool
     {
         return ! $this->isDocumentationPage()
+            && ! (isset($this->pageClass) && $this->pageClass === MarkdownDocument::class)
             && Config::getBool('torchlight.attribution.enabled', true)
             && str_contains($this->html, 'Syntax highlighted by torchlight.dev');
     }
@@ -196,22 +184,6 @@ class MarkdownService
             'torchlight.attribution.markdown',
             'Syntax highlighted by torchlight.dev'
         ));
-    }
-
-    protected function configurePermalinksExtension(): void
-    {
-        $this->addExtension(HeadingPermalinkExtension::class);
-
-        $this->config = array_merge([
-            'heading_permalink' => [
-                'id_prefix' => '',
-                'fragment_prefix' => '',
-                'symbol' => '',
-                'insert' => 'after',
-                'min_heading_level' => 2,
-                'aria_hidden' => false,
-            ],
-        ], $this->config);
     }
 
     protected function enableAllHtmlElements(): void
@@ -267,5 +239,12 @@ class MarkdownService
         }
 
         return [0, 0];
+    }
+
+    protected function configureCustomHeadingRenderer(): void
+    {
+        $this->converter->getEnvironment()->addRenderer(Heading::class,
+            new HeadingRenderer($this->pageClass, $this->headingRegistry)
+        );
     }
 }

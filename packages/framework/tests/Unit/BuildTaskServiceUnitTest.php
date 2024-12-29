@@ -9,7 +9,6 @@ use Hyde\Foundation\HydeKernel;
 use Hyde\Foundation\Kernel\Filesystem;
 use Hyde\Framework\Actions\PostBuildTasks\GenerateBuildManifest;
 use Hyde\Framework\Actions\PostBuildTasks\GenerateRssFeed;
-use Hyde\Framework\Actions\PostBuildTasks\GenerateSearch;
 use Hyde\Framework\Actions\PostBuildTasks\GenerateSitemap as FrameworkGenerateSitemap;
 use Hyde\Framework\Features\BuildTasks\BuildTask;
 use Hyde\Framework\Features\BuildTasks\PostBuildTask;
@@ -38,6 +37,7 @@ class BuildTaskServiceUnitTest extends UnitTestCase
         self::mockConfig(['hyde' => [
             'empty_output_directory' => false,
             'generate_build_manifest' => false,
+            'transfer_media_assets' => false,
         ]]);
 
         $this->createService();
@@ -169,11 +169,6 @@ class BuildTaskServiceUnitTest extends UnitTestCase
         $this->assertInstanceOf(PostBuildTask::class, new GenerateRssFeed());
     }
 
-    public function testGenerateSearchExtendsPostBuildTask()
-    {
-        $this->assertInstanceOf(PostBuildTask::class, new GenerateSearch());
-    }
-
     public function testGenerateSitemapExtendsPostBuildTask()
     {
         $this->assertInstanceOf(PostBuildTask::class, new FrameworkGenerateSitemap());
@@ -289,7 +284,6 @@ class BuildTaskServiceUnitTest extends UnitTestCase
         $files = [
             'app/Actions/GenerateBuildManifestBuildTask.php' => GenerateBuildManifest::class,
             'app/Actions/GenerateRssFeedBuildTask.php' => GenerateRssFeed::class,
-            'app/Actions/GenerateSearchBuildTask.php' => GenerateSearch::class,
         ];
 
         $this->mockKernelFilesystem($files);
@@ -299,7 +293,6 @@ class BuildTaskServiceUnitTest extends UnitTestCase
         $this->assertSame([
             'Hyde\Framework\Actions\PostBuildTasks\GenerateBuildManifest',
             'Hyde\Framework\Actions\PostBuildTasks\GenerateRssFeed',
-            'Hyde\Framework\Actions\PostBuildTasks\GenerateSearch',
         ], $this->service->getRegisteredTasks());
 
         $this->resetKernelInstance();

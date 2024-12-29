@@ -1,0 +1,59 @@
+/*
+ * This file contains the default styles for the Torchlight syntax highlighter.
+ * This is already included in the bundled `resources/assets/app.css` file,
+ * and can be customized by replacing the import with your custom CSS.
+ */
+
+pre code.torchlight .line-number, pre code.torchlight .summary-caret {
+    @apply mr-4;
+}
+
+.prose .torchlight-link, .torchlight-link {
+    @apply underline;
+}
+
+.torchlight.has-focus-lines .line:not(.line-focus) {
+    transition: filter 0.35s, opacity 0.35s;
+    filter: blur(.095rem);
+    opacity: .65;
+}
+ 
+.torchlight.has-focus-lines:hover .line:not(.line-focus) {
+    filter: blur(0px);
+    @apply opacity-100;
+}
+
+
+/* Collapsing */
+
+.torchlight summary:focus {
+    @apply outline-none;
+}
+
+.torchlight details > summary::marker, .torchlight details > summary::-webkit-details-marker {
+    @apply hidden;
+}
+
+.torchlight details .summary-caret::after {
+    @apply pointer-events-none;
+}
+
+.torchlight .summary-caret-empty::after, .torchlight details .summary-caret-middle::after, .torchlight details .summary-caret-end::after {
+    content: " ";
+}
+
+.torchlight details[open] .summary-caret-start::after {
+    content: "-";
+}
+
+.torchlight details:not([open]) .summary-caret-start::after {
+    content: "+";
+}
+
+.torchlight details[open] .summary-hide-when-open {
+    @apply hidden;
+}
+
+.torchlight details:not([open]) .summary-hide-when-open {
+    @apply block;
+}

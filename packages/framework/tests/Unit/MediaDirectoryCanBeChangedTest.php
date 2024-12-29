@@ -67,12 +67,12 @@ class MediaDirectoryCanBeChangedTest extends TestCase
         $this->assertFileExists(Hyde::path('_site/foo.html'));
         $contents = file_get_contents(Hyde::path('_site/foo.html'));
         $this->assertStringContainsString(
-            '<link rel="stylesheet" href="assets/app.css?v='.md5_file(Hyde::path('_assets/app.css')).'">',
+            '<link rel="stylesheet" href="assets/app.css?v='.hash_file('crc32', Hyde::path('_assets/app.css')).'">',
             $contents
         );
 
         $this->assertStringContainsString(
-            '<script defer src="assets/app.js?v='.md5_file(Hyde::path('_assets/app.js')).'"></script>',
+            '<script defer src="assets/app.js?v='.hash_file('crc32', Hyde::path('_assets/app.js')).'"></script>',
             $contents
         );
 

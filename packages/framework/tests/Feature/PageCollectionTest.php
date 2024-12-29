@@ -80,6 +80,7 @@ class PageCollectionTest extends TestCase
     public function testGetPagesReturnsCollectionOfPagesOfGivenClass()
     {
         $this->withoutDefaultPages();
+        $this->withoutDocumentationSearch();
 
         $this->file('_pages/foo.blade.php');
         $this->file('_pages/foo.md');
@@ -103,11 +104,13 @@ class PageCollectionTest extends TestCase
         $this->assertEquals(new HtmlPage('foo'), Pages::getPages(HtmlPage::class)->first());
 
         $this->restoreDefaultPages();
+        $this->restoreDocumentationSearch();
     }
 
     public function testGetPagesReturnsAllPagesWhenNotSuppliedWithClassString()
     {
         $this->withoutDefaultPages();
+        $this->withoutDocumentationSearch();
 
         $this->file('_pages/foo.blade.php');
         $this->file('_pages/foo.md');
@@ -125,13 +128,16 @@ class PageCollectionTest extends TestCase
         $this->assertEquals(new HtmlPage('foo'), $collection->get('_pages/foo.html'));
 
         $this->restoreDefaultPages();
+        $this->restoreDocumentationSearch();
     }
 
     public function testGetPagesReturnsEmptyCollectionWhenNoPagesAreDiscovered()
     {
         $this->withoutDefaultPages();
+        $this->withoutDocumentationSearch();
         $this->assertEmpty(Pages::getPages());
         $this->restoreDefaultPages();
+        $this->restoreDocumentationSearch();
     }
 
     public function testPagesAreNotDiscoveredForDisabledFeatures()
@@ -155,6 +161,8 @@ class PageCollectionTest extends TestCase
 
     public function testPagesWithCustomSourceDirectoriesAreDiscoveredProperly()
     {
+        $this->withoutDocumentationSearch();
+
         BladePage::setSourceDirectory('.source/pages');
         MarkdownPage::setSourceDirectory('.source/pages');
         MarkdownPost::setSourceDirectory('.source/posts');
@@ -177,6 +185,8 @@ class PageCollectionTest extends TestCase
         $this->assertEquals(new MarkdownPage('foo'), $collection->get('.source/pages/foo.md'));
         $this->assertEquals(new MarkdownPost('foo'), $collection->get('.source/posts/foo.md'));
         $this->assertEquals(new DocumentationPage('foo'), $collection->get('.source/docs/foo.md'));
+
+        $this->restoreDocumentationSearch();
     }
 
     public function testGetFileThrowsExceptionWhenFileIsNotFound()

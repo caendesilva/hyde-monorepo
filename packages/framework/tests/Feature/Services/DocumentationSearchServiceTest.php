@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Hyde\Framework\Testing\Feature\Services;
 
-use Hyde\Facades\Filesystem;
 use Hyde\Framework\Actions\GeneratesDocumentationSearchIndex;
 use Hyde\Hyde;
 use Hyde\Testing\CreatesTemporaryFiles;
@@ -32,14 +31,12 @@ class DocumentationSearchServiceTest extends UnitTestCase
     {
         $this->file('_docs/foo.md');
 
-        GeneratesDocumentationSearchIndex::handle();
-
         $this->assertSame(json_encode([[
             'slug' => 'foo',
             'title' => 'Foo',
             'content' => '',
             'destination' => 'foo.html',
-        ]]), file_get_contents('_site/docs/search.json'));
+        ]]), GeneratesDocumentationSearchIndex::handle());
     }
 
     public function testItAddsAllFilesToSearchIndex()
@@ -53,23 +50,10 @@ class DocumentationSearchServiceTest extends UnitTestCase
 
     public function testItHandlesGenerationEvenWhenThereAreNoPages()
     {
-        GeneratesDocumentationSearchIndex::handle();
-
-        $this->assertSame('[]', file_get_contents('_site/docs/search.json'));
-
-        Filesystem::unlink('_site/docs/search.json');
+        $this->assertSame('[]', GeneratesDocumentationSearchIndex::handle());
     }
 
-    public function testSaveMethodSavesTheFileToTheCorrectLocation()
-    {
-        GeneratesDocumentationSearchIndex::handle();
-
-        $this->assertFileExists('_site/docs/search.json');
-
-        Filesystem::unlink('_site/docs/search.json');
-    }
-
-    public function testItGeneratesAValidJSON()
+    public function testItGeneratesAValidJson()
     {
         $this->file('_docs/foo.md', "# Bar\nHello World");
         $this->file('_docs/bar.md', "# Foo\n\nHello World");
@@ -134,10 +118,6 @@ class DocumentationSearchServiceTest extends UnitTestCase
 
     protected function getArray(): array
     {
-        GeneratesDocumentationSearchIndex::handle();
-        $array = json_decode(file_get_contents('_site/docs/search.json'), true);
-        Filesystem::unlink('_site/docs/search.json');
-
-        return $array;
+        return json_decode(GeneratesDocumentationSearchIndex::handle(), true);
     }
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Hyde\Framework\Testing\Unit\Views;
 
+use Hyde\Hyde;
 use Hyde\Framework\Factories\FeaturedImageFactory;
 use Hyde\Framework\Features\Blogging\Models\FeaturedImage;
 use Hyde\Markdown\Models\FrontMatter;
@@ -15,6 +16,13 @@ use Hyde\Testing\TestCase;
  */
 class FeaturedImageViewTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->file('_media/foo.jpg', 'test content');
+        config(['hyde.cache_busting' => false]);
+    }
+
     public function testTheView()
     {
         $component = $this->renderComponent([
@@ -249,6 +257,22 @@ class FeaturedImageViewTest extends TestCase
         );
     }
 
+    public function testCacheBusting()
+    {
+        config(['hyde.cache_busting' => true]);
+        $component = $this->renderComponent();
+        $this->assertStringContainsString('src="media/foo.jpg?v=98b41d87"', $component);
+    }
+
+    public function testImagePathNormalization()
+    {
+        Hyde::setMediaDirectory('custom_media');
+        $this->file('custom_media/bar.png', 'test content');
+
+        $component = $this->renderComponent(['image.source' => 'bar.png']);
+        $this->assertStringContainsString('src="custom_media/bar.png"', $component);
+    }
+
     protected function stripHtml(string $string): string
     {
         return trim($this->stripWhitespace(strip_tags($string)), "\t ");
@@ -259,7 +283,7 @@ class FeaturedImageViewTest extends TestCase
         return str_replace([' ', "\r", "\n"], '', $string);
     }
 
-    protected function renderComponent(FeaturedImage|array $data = ['image.source' => 'foo']): string
+    protected function renderComponent(FeaturedImage|array $data = ['image.source' => 'foo.jpg']): string
     {
         $image = $data instanceof FeaturedImage ? $data : $this->make($data);
 
@@ -270,9 +294,10 @@ class FeaturedImageViewTest extends TestCase
         return view('hyde::components.post.image')->render();
     }
 
-    protected function make(array $data = [], string $path = 'foo.png'): FeaturedImage
+    protected function make(array $data = [], string $path = 'foo.jpg'): FeaturedImage
     {
-        $this->file("_media/$path");
+        $mediaDir = config('hyde.media_directory', '_media');
+        $this->file("$mediaDir/$path", 'test content');
 
         return FeaturedImageFactory::make(FrontMatter::fromArray(array_merge(
             ['image.source' => $path],

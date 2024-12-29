@@ -7,6 +7,7 @@ namespace Hyde\Framework\Testing\Feature\Foundation;
 use Hyde\Foundation\HydeKernel;
 use Hyde\Foundation\Facades\Routes;
 use Hyde\Foundation\Kernel\Hyperlinks;
+use Hyde\Support\Filesystem\MediaFile;
 use Hyde\Framework\Exceptions\FileNotFoundException;
 use Hyde\Hyde;
 use Hyde\Testing\TestCase;
@@ -27,94 +28,107 @@ class HyperlinksTest extends TestCase
 
     public function testAssetHelperGetsRelativeWebLinkToImageStoredInSiteMediaFolder()
     {
-        $tests = [
-            'test.jpg' => 'media/test.jpg',
-            'foo' => 'media/foo',
-            'http://example.com/test.jpg' => 'http://example.com/test.jpg',
-            'https://example.com/test.jpg' => 'https://example.com/test.jpg',
-        ];
+        $this->file('_media/test.jpg');
 
-        foreach ($tests as $input => $expected) {
-            $this->assertSame($this->class->asset($input), $expected);
-        }
+        $this->assertSame('media/test.jpg?v=00000000', (string) $this->class->asset('test.jpg'));
     }
 
     public function testAssetHelperResolvesPathsForNestedPages()
     {
-        $tests = [
-            'test.jpg' => '../media/test.jpg',
-            'foo' => '../media/foo',
-            'http://example.com/test.jpg' => 'http://example.com/test.jpg',
-            'https://example.com/test.jpg' => 'https://example.com/test.jpg',
-        ];
+        $this->file('_media/test.jpg');
 
-        foreach ($tests as $input => $expected) {
-            $this->mockCurrentPage('foo/bar');
-            $this->assertSame($this->class->asset($input), $expected);
-        }
+        $this->mockCurrentPage('foo/bar');
+        $this->assertSame('../media/test.jpg?v=00000000', (string) $this->class->asset('test.jpg'));
     }
 
-    public function testAssetHelperReturnsQualifiedAbsoluteUriWhenRequestedAndSiteHasBaseUrl()
+    public function testAssetHelperReturnsQualifiedAbsoluteUriWhenSiteHasBaseUrl()
     {
         config(['hyde.url' => 'https://example.org']);
-        $this->assertSame('https://example.org/media/test.jpg', $this->class->asset('test.jpg', true));
+        $this->file('_media/test.jpg');
+        $this->assertSame('https://example.org/media/test.jpg?v=00000000', (string) $this->class->asset('test.jpg'));
     }
 
-    public function testAssetHelperReturnsDefaultRelativePathWhenQualifiedAbsoluteUriIsRequestedButSiteHasNoBaseUrl()
+    public function testAssetHelperReturnsDefaultRelativePathWhenSiteHasNoBaseUrl()
     {
         $this->withoutSiteUrl();
-        $this->assertSame('media/test.jpg', $this->class->asset('test.jpg', true));
+        $this->file('_media/test.jpg');
+        $this->assertSame('media/test.jpg?v=00000000', (string) $this->class->asset('test.jpg'));
     }
 
-    public function testAssetHelperReturnsDefaultRelativePathWhenQualifiedAbsoluteUriIsRequestedButSiteBaseUrlIsLocalhost()
+    public function testAssetHelperReturnsDefaultRelativePathWhenSiteBaseUrlIsLocalhost()
     {
-        $this->assertSame('media/test.jpg', $this->class->asset('test.jpg', true));
-    }
-
-    public function testAssetHelperReturnsInputWhenQualifiedAbsoluteUriIsRequestedButImageIsAlreadyQualified()
-    {
-        $this->assertSame('http://localhost/media/test.jpg', $this->class->asset('http://localhost/media/test.jpg', true));
-    }
-
-    public function testAssetHelperReturnsInputWhenQualifiedAbsoluteUriIsRequestedButImageIsAlreadyQualifiedRegardlessOfMatchingTheConfiguredUrl()
-    {
-        config(['hyde.url' => 'https://example.org']);
-        $this->assertSame('http://localhost/media/test.jpg', $this->class->asset('http://localhost/media/test.jpg', true));
+        $this->file('_media/test.jpg');
+        $this->assertSame('media/test.jpg?v=00000000', (string) $this->class->asset('test.jpg'));
     }
 
     public function testAssetHelperUsesConfiguredMediaDirectory()
     {
         Hyde::setMediaDirectory('_assets');
-        $this->assertSame('assets/test.jpg', $this->class->asset('test.jpg'));
+        $this->file('_assets/test.jpg');
+        $this->assertSame('assets/test.jpg?v=00000000', (string) $this->class->asset('test.jpg'));
     }
 
-    public function testMediaLinkHelper()
-    {
-        $this->assertSame('media/foo', $this->class->mediaLink('foo'));
-    }
-
-    public function testMediaLinkHelperWithRelativePath()
-    {
-        $this->mockCurrentPage('foo/bar');
-        $this->assertSame('../media/foo', $this->class->mediaLink('foo'));
-    }
-
-    public function testMediaLinkHelperUsesConfiguredMediaDirectory()
-    {
-        Hyde::setMediaDirectory('_assets');
-        $this->assertSame('assets/foo', $this->class->mediaLink('foo'));
-    }
-
-    public function testMediaLinkHelperWithValidationAndExistingFile()
-    {
-        $this->file('_media/foo');
-        $this->assertSame('media/foo', $this->class->mediaLink('foo', true));
-    }
-
-    public function testMediaLinkHelperWithValidationAndNonExistingFile()
+    public function testAssetHelperThrowsExceptionForNonExistentFile()
     {
         $this->expectException(FileNotFoundException::class);
-        $this->class->mediaLink('foo', true);
+        $this->class->asset('non_existent_file.jpg');
+    }
+
+    public function testAssetHelperCanGetFileWithNoExtension()
+    {
+        $this->file('_media/no_extension');
+        $this->assertInstanceOf(MediaFile::class, $this->class->asset('no_extension'));
+    }
+
+    public function testAssetHelperCanGetFileWithNonMediaExtension()
+    {
+        $this->file('_media/test.foo');
+        $this->assertInstanceOf(MediaFile::class, $this->class->asset('test.foo'));
+    }
+
+    public function testAssetHelperThrowsExceptionWithHelpfulMessage()
+    {
+        $this->expectExceptionMessage('File [_media/test.png] not found when trying to resolve a media asset.');
+        $this->expectException(FileNotFoundException::class);
+        $this->class->asset('test.png');
+    }
+
+    public function testAssetHelperReturnsInputWhenImageIsAlreadyQualifiedRegardlessOfMatchingTheConfiguredUrl()
+    {
+        $this->expectExceptionMessage('File [_media/http://localhost/media/test.jpg] not found when trying to resolve a media asset.');
+        $this->expectException(FileNotFoundException::class);
+
+        config(['hyde.url' => 'https://example.org']);
+        $this->assertSame('http://localhost/media/test.jpg?v=00000000', (string) $this->class->asset('http://localhost/media/test.jpg'));
+    }
+
+    public function testAssetHelper()
+    {
+        $this->file('_media/foo', 'test');
+        $class = $this->class;
+        $this->assertSame('media/foo?v=accf8b33', (string) $class->asset('foo'));
+    }
+
+    public function testAssetHelperWithRelativePath()
+    {
+        $this->mockCurrentPage('foo/bar');
+        $this->file('_media/foo', 'test');
+        $class = $this->class;
+        $this->assertSame('../media/foo?v=accf8b33', (string) $class->asset('foo'));
+    }
+
+    public function testAssetHelperWithExistingFile()
+    {
+        $this->file('_media/foo', 'test');
+        $class = $this->class;
+        $this->assertSame('media/foo?v=accf8b33', (string) $class->asset('foo'));
+    }
+
+    public function testAssetHelperWithNonExistingFile()
+    {
+        $this->expectException(FileNotFoundException::class);
+        $class = $this->class;
+        (string) $class->asset('foo');
     }
 
     public function testRouteHelper()

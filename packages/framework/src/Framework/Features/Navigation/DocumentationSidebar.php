@@ -4,77 +4,85 @@ declare(strict_types=1);
 
 namespace Hyde\Framework\Features\Navigation;
 
-use Hyde\Hyde;
 use Hyde\Facades\Config;
-use Hyde\Foundation\Facades\Routes;
 use Hyde\Pages\DocumentationPage;
 use Hyde\Support\Facades\Render;
-use Hyde\Support\Models\Route;
-use Illuminate\Support\Collection;
+use Illuminate\Contracts\Support\Arrayable;
 
-use function collect;
+use function app;
+use function is_string;
 
-class DocumentationSidebar extends BaseNavigationMenu
+class DocumentationSidebar extends NavigationMenu
 {
-    protected function generate(): void
+    /**
+     * Get the navigation menu instance from the service container.
+     */
+    public static function get(): static
     {
-        Routes::getRoutes(DocumentationPage::class)->each(function (Route $route): void {
-            if ($this->canAddRoute($route)) {
-                $this->items->put($route->getRouteKey(), NavItem::fromRoute($route));
-            }
-        });
+        return app('navigation.sidebar');
+    }
 
-        // If there are no pages other than the index page, we add it to the sidebar so that it's not empty
-        if ($this->items->count() === 0 && DocumentationPage::home() !== null) {
-            $this->items->push(NavItem::fromRoute(DocumentationPage::home(), group: 'other'));
+    public function __construct(Arrayable|array $items = [])
+    {
+        parent::__construct($items);
+    }
+
+    public function getHeader(): string
+    {
+        return Config::getString('docs.sidebar.header', 'Documentation');
+    }
+
+    public function getFooter(): ?string
+    {
+        /** @var null|string|false $option */
+        $option = Config::get('docs.sidebar.footer', '[Back to home page](../)');
+
+        if (is_string($option)) {
+            return $option;
         }
+
+        return null;
+    }
+
+    public function hasFooter(): bool
+    {
+        return $this->getFooter() !== null;
+    }
+
+    public function isCollapsible(): bool
+    {
+        return Config::getBool('docs.sidebar.collapsible', true);
     }
 
     public function hasGroups(): bool
     {
-        return (count($this->getGroups()) >= 1) && ($this->getGroups() !== ['other']);
+        return $this->getItems()->contains(fn (NavigationItem|NavigationGroup $item): bool => $item instanceof NavigationGroup);
     }
 
-    /** @return array<string> */
-    public function getGroups(): array
+    /**
+     * Get the group that should be open when the sidebar is loaded.
+     *
+     * @internal This method offloads logic for the sidebar view, and is not intended to be used in other contexts.
+     */
+    public function getActiveGroup(): ?NavigationGroup
     {
-        return $this->items->map(function (NavItem $item): string {
-            return $item->getGroup();
-        })->unique()->toArray();
-    }
+        if ($this->items->isEmpty() || (! $this->hasGroups()) || (! $this->isCollapsible()) || Render::getPage() === null) {
+            return null;
+        }
 
-    /** @return Collection<\Hyde\Framework\Features\Navigation\NavItem> */
-    public function getItemsInGroup(?string $group): Collection
-    {
-        return $this->items->filter(function (NavItem $item) use ($group): bool {
-            return ($item->getGroup() === $group) || ($item->getGroup() === Hyde::makeSlug($group));
-        })->sortBy('navigation.priority')->values();
-    }
+        $currentPage = Render::getPage();
 
-    public function isGroupActive(string $group): bool
-    {
-        $normalized = Hyde::makeSlug(Render::getPage()->navigationMenuGroup() ?? 'other');
+        if ($currentPage->getRoute()->is(DocumentationPage::homeRouteName()) && blank($currentPage->navigationMenuGroup())) {
+            // Unless the index page has a specific group set, the first group in the sidebar should be open when visiting the index page.
+            return $this->items->sortBy(fn (NavigationGroup $item): int => $item->getPriority())->first();
+        }
 
-        return ($normalized === $group) || ($this->isPageIndexPage() && $this->shouldIndexPageBeActive($group));
-    }
+        /** @var ?NavigationGroup $first */
+        $first = $this->items->first(function (NavigationGroup $group) use ($currentPage): bool {
+            // A group is active when it contains the current page being rendered.
+            return $currentPage->navigationMenuGroup() && $group->getGroupKey() === NavigationGroup::normalizeGroupKey($currentPage->navigationMenuGroup());
+        });
 
-    public function makeGroupTitle(string $group): string
-    {
-        return Config::getNullableString("docs.sidebar_group_labels.$group") ?? Hyde::makeTitle($group);
-    }
-
-    protected function canAddRoute(Route $route): bool
-    {
-        return parent::canAddRoute($route) && ! $route->is(DocumentationPage::homeRouteName());
-    }
-
-    private function isPageIndexPage(): bool
-    {
-        return Render::getPage()->getRoute()->is(DocumentationPage::homeRouteName());
-    }
-
-    private function shouldIndexPageBeActive(string $group): bool
-    {
-        return Render::getPage()->navigationMenuGroup() === 'other' && $group === collect($this->getGroups())->first();
+        return $first;
     }
 }

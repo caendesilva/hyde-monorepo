@@ -22,8 +22,8 @@ class RelativeLinksAcrossPagesRetainsIntegrityTest extends TestCase
     {
         parent::setUp();
 
-        config(['hyde.enable_cache_busting' => false]);
-        config(['hyde.navigation.subdirectories' => 'flat']);
+        config(['hyde.cache_busting' => false]);
+        config(['hyde.navigation.subdirectory_display' => 'flat']);
 
         $this->needsDirectory('_pages/nested');
         $this->file('_pages/root.md');
@@ -93,7 +93,7 @@ class RelativeLinksAcrossPagesRetainsIntegrityTest extends TestCase
             '<link rel="stylesheet" href="../media/app.css">',
             '<a href="../docs/index.html">',
             '<a href="../docs/docs.html"',
-            '<a href="../index.html">Back to home page</a>',
+            '<a href="../">Back to home page</a>',
         ]);
     }
 }

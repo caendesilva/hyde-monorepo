@@ -13,20 +13,20 @@ Note that these helpers targets those who write custom code and Blade templates,
 
 ## File-based Collections
 
-Hyde provides `DataCollections`, a subset of [Laravel Collections](https://laravel.com/docs/10.x/collections) giving you a similar developer experience to working with Eloquent Collections. However, instead of accessing a database,
+Hyde provides `DataCollection`, a subset of [Laravel Collections](https://laravel.com/docs/10.x/collections) giving you a similar developer experience to working with Eloquent Collections. However, instead of accessing a database,
 it's all entirely file-based using static data files such as Markdown, Yaml, and JSON files which get parsed into objects that you can easily work with.
 
 ```php
-use Hyde\Support\DataCollections;
+use Hyde\Support\DataCollection;
 
 // Gets all Markdown files in resources/collections/$name directory
-DataCollections::markdown(string $name);
+DataCollection::markdown(string $name);
 
 // Gets all YAML files in resources/collections/$name directory
-DataCollections::yaml(string $name);
+DataCollection::yaml(string $name);
 
 // Gets all JSON files in resources/collections/$name directory
-DataCollections::json(string $name, bool $asArray = false);
+DataCollection::json(string $name, bool $asArray = false);
 ```
 
 See the [File-based Collections](collections) documentation for the full details.
@@ -71,7 +71,15 @@ Includes::markdown('example') === Includes::markdown('example.md');
 
 All methods will return `null` if the file does not exist.
 However, you can supply a default value as the second argument to be used instead.
-Remember that Markdown and Blade defaults will still be rendered to HTML.
+Remember that Markdown and Blade defaults will also be rendered to HTML.
+
+Includes are particularly useful in Blade views, as you can echo them directly. You do not need to import the namespace, as it is already aliased.
+
+```blade
+<footer>
+    {{ Includes::markdown('footer.md') }}
+</footer>
+```
 
 ```php
 use Hyde\Support\Includes;

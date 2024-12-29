@@ -17,6 +17,16 @@ use Illuminate\Support\Facades\Http;
  */
 class FeaturedImageTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config(['hyde.cache_busting' => false]);
+
+        $this->file('_media/foo', 'test');
+        $this->file('_media/source');
+    }
+
     public function testGetMetadataArray()
     {
         $this->assertSame([
@@ -52,10 +62,8 @@ class FeaturedImageTest extends TestCase
 
     public function testFeaturedImageGetContentLength()
     {
-        $this->file('_media/foo', 'image');
-
         $image = new FeaturedImage('_media/foo', ...$this->defaultArguments());
-        $this->assertSame(5, $image->getContentLength());
+        $this->assertSame(4, $image->getContentLength());
     }
 
     public function testFeaturedImageGetContentLengthWithRemoteSource()
@@ -106,6 +114,16 @@ class FeaturedImageTest extends TestCase
 
         $this->assertSame('media/foo', FeaturedImageFactory::make(new FrontMatter(['image' => 'foo']))->getSource());
         $this->assertSame('http', FeaturedImageFactory::make(new FrontMatter(['image' => 'http']))->getSource());
+    }
+
+    public function testImagePathsWithCacheBusting()
+    {
+        config(['hyde.cache_busting' => true]);
+
+        $this->assertSame('media/foo?v=accf8b33', (new FeaturedImage('_media/foo', ...$this->defaultArguments()))->getSource());
+        $this->assertSame('media/foo?v=accf8b33', FeaturedImageFactory::make(new FrontMatter(['image.source' => 'foo']))->getSource());
+        $this->assertSame('media/foo?v=accf8b33', FeaturedImageFactory::make(new FrontMatter(['image.source' => 'media/foo']))->getSource());
+        $this->assertSame('media/foo?v=accf8b33', FeaturedImageFactory::make(new FrontMatter(['image.source' => '_media/foo']))->getSource());
     }
 
     protected function defaultArguments(): array

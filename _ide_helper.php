@@ -22,20 +22,25 @@ $route = \Hyde\Support\Facades\Render::getRoute();
 /** @var string $routeKey The route key for the page being compiled/previewed */
 $routeKey = \Hyde\Support\Facades\Render::getRouteKey();
 
+// Variables available only to some page types
+
+/** @var \Hyde\Framework\Features\Navigation\DocumentationSidebar $sidebar */
+$sidebar = app('navigation.sidebar');
+
 // Facades (aliased in app/config.php)
 
 /** @mixin \Hyde\Foundation\HydeKernel */
 class Hyde extends \Hyde\Hyde {}
 class Site extends \Hyde\Facades\Site {}
 class Meta extends \Hyde\Facades\Meta {}
-/** @mixin \Hyde\Framework\Services\AssetService */
 class Asset extends \Hyde\Facades\Asset {}
 class Author extends \Hyde\Facades\Author {}
 class Features extends \Hyde\Facades\Features {}
 class Config extends \Hyde\Facades\Config {}
+class Vite extends \Hyde\Facades\Vite {}
 /** @mixin \Illuminate\Filesystem\Filesystem */
 class Filesystem extends \Hyde\Facades\Filesystem {}
-class DataCollections extends \Hyde\Support\DataCollections {}
+class DataCollection extends \Hyde\Support\DataCollection {}
 class Includes extends \Hyde\Support\Includes {}
 /** @mixin \Hyde\Foundation\Kernel\RouteCollection */
 class Routes extends \Hyde\Foundation\Facades\Routes {}

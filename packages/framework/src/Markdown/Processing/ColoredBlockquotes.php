@@ -9,7 +9,7 @@ use Hyde\Markdown\Models\Markdown;
 
 use function ltrim;
 use function explode;
-use function sprintf;
+use function view;
 use function str_starts_with;
 use function trim;
 
@@ -52,9 +52,10 @@ class ColoredBlockquotes implements MarkdownShortcodeContract
         $class = ltrim($parts[0], '>');
         $contents = trim($parts[1] ?? '', ' ');
 
-        return sprintf('<blockquote class="%s">%s</blockquote>',
-            $class, trim(Markdown::render($contents))
-        );
+        return view('hyde::components.colored-blockquote', [
+            'class' => $class,
+            'contents' => trim(Markdown::render($contents)),
+        ])->render();
     }
 
     protected static function stringStartsWithSignature(string $input): bool

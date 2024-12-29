@@ -42,7 +42,7 @@ class StaticPageBuilderTest extends TestCase
     protected function validateBasicHtml(string $html)
     {
         $this->assertStringContainsString('<!DOCTYPE html>', $html);
-        $this->assertStringContainsString('<html lang="en">', $html);
+        $this->assertStringContainsString('<html lang="en"', $html);
         $this->assertStringContainsString('<head>', $html);
         $this->assertStringContainsString('<title>', $html);
         $this->assertStringContainsString('</title>', $html);

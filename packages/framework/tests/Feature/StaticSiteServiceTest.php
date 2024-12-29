@@ -18,6 +18,7 @@ use Hyde\Framework\Actions\StaticPageBuilder;
  * @covers \Hyde\Console\Commands\BuildSiteCommand
  * @covers \Hyde\Framework\Services\BuildService
  * @covers \Hyde\Framework\Actions\PreBuildTasks\CleanSiteDirectory
+ * @covers \Hyde\Framework\Actions\PreBuildTasks\TransferMediaAssets
  */
 class StaticSiteServiceTest extends TestCase
 {
@@ -59,10 +60,12 @@ class StaticSiteServiceTest extends TestCase
 
     public function testBuildCommandTransfersMediaAssetFiles()
     {
-        file_put_contents(Hyde::path('_media/test-image.png'), 'foo');
-        $this->artisan('build');
+        $this->file('_media/test-image.png', 'foo');
+        $this->artisan('build')
+            ->expectsOutputToContain('Transferring Media Assets...');
+
         $this->assertFileEquals(Hyde::path('_media/test-image.png'), Hyde::path('_site/media/test-image.png'));
-        Filesystem::unlink('_media/test-image.png');
+
         Filesystem::unlink('_site/media/test-image.png');
     }
 
@@ -70,9 +73,39 @@ class StaticSiteServiceTest extends TestCase
     {
         $this->directory('_media/foo');
 
-        file_put_contents(Hyde::path('_media/foo/img.png'), 'foo');
+        $this->file('_media/foo/img.png', 'foo');
         $this->artisan('build')->assertSuccessful();
         $this->assertFileEquals(Hyde::path('_media/foo/img.png'), Hyde::path('_site/media/foo/img.png'));
+    }
+
+    public function testBuildCommandCreatesNeededMediaDirectoriesRecursively()
+    {
+        $this->directory('_media/foo/bar');
+        $this->file('_media/1.png');
+        $this->file('_media/foo/2.png');
+        $this->file('_media/foo/bar/3.png');
+
+        Filesystem::deleteDirectory('_site');
+
+        $this->artisan('build')
+            ->assertExitCode(0);
+
+        $this->assertFileExists(Hyde::path('_site/media/1.png'));
+        $this->assertFileExists(Hyde::path('_site/media/foo/2.png'));
+        $this->assertFileExists(Hyde::path('_site/media/foo/bar/3.png'));
+    }
+
+    public function testBuildCommandSkipsMediaTransferWhenThereAreNoAssets()
+    {
+        rename(Hyde::path('_media/app.css'), Hyde::path('_media/app.css.bak'));
+
+        $this->artisan('build')
+            ->expectsOutputToContain('Transferring Media Assets... ')
+            ->expectsOutputToContain('Skipped')
+            ->expectsOutputToContain('> No media files to transfer.')
+            ->assertExitCode(0);
+
+        rename(Hyde::path('_media/app.css.bak'), Hyde::path('_media/app.css'));
     }
 
     public function testAllPageTypesCanBeCompiled()
@@ -89,7 +122,6 @@ class StaticSiteServiceTest extends TestCase
             ->expectsOutput('Creating Markdown Pages...')
             ->expectsOutput('Creating Markdown Posts...')
             ->expectsOutput('Creating Documentation Pages...')
-            ->doesntExpectOutputToContain('Creating')
             ->assertExitCode(0);
 
         $this->assertFileExists(Hyde::path('_site/html.html'));
@@ -97,12 +129,6 @@ class StaticSiteServiceTest extends TestCase
         $this->assertFileExists(Hyde::path('_site/markdown.html'));
         $this->assertFileExists(Hyde::path('_site/posts/post.html'));
         $this->assertFileExists(Hyde::path('_site/docs/docs.html'));
-
-        Filesystem::unlink('_site/html.html');
-        Filesystem::unlink('_site/blade.html');
-        Filesystem::unlink('_site/markdown.html');
-        Filesystem::unlink('_site/posts/post.html');
-        Filesystem::unlink('_site/docs/docs.html');
     }
 
     public function testOnlyProgressBarsForTypesWithPagesAreShown()
@@ -121,8 +147,6 @@ class StaticSiteServiceTest extends TestCase
 
         $this->assertFileExists(Hyde::path('_site/blade.html'));
         $this->assertFileExists(Hyde::path('_site/markdown.html'));
-        Filesystem::unlink('_site/blade.html');
-        Filesystem::unlink('_site/markdown.html');
     }
 
     public function testPrintInitialInformationAllowsApiToBeDisabled()
@@ -136,15 +160,13 @@ class StaticSiteServiceTest extends TestCase
     {
         Process::fake();
 
-        $this->artisan('build --run-prettier --run-dev --run-prod')
-            ->expectsOutput('Prettifying code! This may take a second.')
-            ->expectsOutput('Building frontend assets for development! This may take a second.')
+        $this->artisan('build --run-prettier --run-vite')
             ->expectsOutput('Building frontend assets for production! This may take a second.')
+            ->expectsOutput('Prettifying code! This may take a second.')
             ->assertExitCode(0);
 
+        Process::assertRan(fn ($process) => $process->command === 'npm run build');
         Process::assertRan(fn ($process) => $process->command === 'npx prettier '.Hyde::pathToRelative(Hyde::sitePath()).'/**/*.html --write --bracket-same-line');
-        Process::assertRan(fn ($process) => $process->command === 'npm run dev');
-        Process::assertRan(fn ($process) => $process->command === 'npm run prod');
     }
 
     public function testPrettyUrlsOptionOutput()

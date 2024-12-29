@@ -40,7 +40,7 @@ To take full advantage of the framework, it may first be good to familiarize our
 | `_media`           | Store static assets to be copied to the build directory     |
 | `_site`            | The build directory where your compiled site will be stored |
 | `config`           | Configuration files for Hyde and integrations               |
-| `resources/assets` | Location for Laravel Mix source files (optional)            |
+| `resources/assets` | Location for CSS/JS Vite source files (optional)            |
 | `resources/views`  | Location for Blade components (optional)                    |
 | `app`              | Location for custom PHP classes (optional)                  |
 

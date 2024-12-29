@@ -24,6 +24,8 @@ use function trim;
 
 /**
  * Resolves file path comments found in Markdown code blocks into a neat badge shown in the top right corner.
+ *
+ * @todo See about replacing this with a custom Codeblock Blade view that can be customized, even supporting click to copy buttons or arbitrary other features.
  */
 class CodeblockFilepathProcessor implements MarkdownPreProcessorContract, MarkdownPostProcessorContract
 {
@@ -76,22 +78,36 @@ class CodeblockFilepathProcessor implements MarkdownPreProcessorContract, Markdo
     public static function postprocess(string $html): string
     {
         $lines = explode("\n", $html);
+        $highlightedByTorchlight = str_contains($html, static::$torchlightKey);
 
         /** @var int $index */
         foreach ($lines as $index => $line) {
             if (str_starts_with($line, '<!-- HYDE[Filepath]')) {
-                $path = static::trimHydeDirective($line);
-                unset($lines[$index]);
-                $codeBlockLine = $index + 1;
-                $label = static::resolveTemplate($path);
-
-                $lines[$codeBlockLine] = str_contains($html, static::$torchlightKey)
-                    ? static::injectLabelToTorchlightCodeLine($label, $lines[$codeBlockLine])
-                    : static::injectLabelToCodeLine($label, $lines[$codeBlockLine]);
+                $lines = static::processFilepathLine($lines, $index, $highlightedByTorchlight);
             }
         }
 
         return implode("\n", $lines);
+    }
+
+    protected static function processFilepathLine(array $lines, int $index, bool $highlightedByTorchlight): array
+    {
+        $path = static::trimHydeDirective($lines[$index]);
+        $label = static::resolveTemplate($path, $highlightedByTorchlight);
+        $codeBlockLine = $index + 1;
+
+        unset($lines[$index]);
+
+        $lines[$codeBlockLine] = static::injectLabel($label, $lines[$codeBlockLine], $highlightedByTorchlight);
+
+        return $lines;
+    }
+
+    protected static function injectLabel(string $label, string $line, bool $highlightedByTorchlight): string
+    {
+        return $highlightedByTorchlight
+            ? static::injectLabelToTorchlightCodeLine($label, $line)
+            : static::injectLabelToCodeLine($label, $line);
     }
 
     protected static function lineMatchesPattern(string $line): bool
@@ -112,10 +128,11 @@ class CodeblockFilepathProcessor implements MarkdownPreProcessorContract, Markdo
         ));
     }
 
-    protected static function resolveTemplate(string $path): string
+    protected static function resolveTemplate(string $path, bool $highlightedByTorchlight): string
     {
         return View::make('hyde::components.filepath-label', [
             'path' => Config::getBool('markdown.allow_html', false) ? new HtmlString($path) : $path,
+            'highlightedByTorchlight' => $highlightedByTorchlight,
         ])->render();
     }
 

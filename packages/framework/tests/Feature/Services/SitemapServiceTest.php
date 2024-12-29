@@ -71,12 +71,26 @@ class SitemapServiceTest extends TestCase
 
     public function testGenerateAddsDocumentationPagesToXml()
     {
+        $this->withoutDocumentationSearch();
         Filesystem::touch('_docs/foo.md');
 
         $service = new SitemapGenerator();
         $service->generate();
 
         $this->assertCount(3, $service->getXmlElement()->url);
+
+        Filesystem::unlink('_docs/foo.md');
+        $this->restoreDocumentationSearch();
+    }
+
+    public function test_generate_adds_documentation_search_pages_to_xml()
+    {
+        Filesystem::touch('_docs/foo.md');
+
+        $service = new SitemapGenerator();
+        $service->generate();
+
+        $this->assertCount(5, $service->getXmlElement()->url);
 
         Filesystem::unlink('_docs/foo.md');
     }
@@ -140,6 +154,7 @@ class SitemapServiceTest extends TestCase
         config(['hyde.url' => 'foo']);
 
         Filesystem::unlink(['_pages/index.blade.php', '_pages/404.blade.php']);
+        $this->withoutDocumentationSearch();
 
         $files = [
             '_pages/blade.blade.php',
@@ -166,6 +181,8 @@ class SitemapServiceTest extends TestCase
 
         copy(Hyde::vendorPath('resources/views/homepages/welcome.blade.php'), Hyde::path('_pages/index.blade.php'));
         copy(Hyde::vendorPath('resources/views/pages/404.blade.php'), Hyde::path('_pages/404.blade.php'));
+
+        $this->restoreDocumentationSearch();
     }
 
     public function testLinksFallbackToRelativeLinksWhenASiteUrlIsNotSet()

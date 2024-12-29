@@ -51,13 +51,33 @@ class HeadComponentViewTest extends TestCase
         $this->mockPage();
         $this->file('_media/favicon.ico');
 
-        $this->assertStringContainsString('<link rel="shortcut icon" href="media/favicon.ico" type="image/x-icon">', $this->renderTestView());
+        $this->assertStringContainsString('<link rel="shortcut icon" href="media/favicon.ico?v=00000000" type="image/x-icon">', $this->renderTestView());
     }
 
     public function testLinkToFaviconUsesRelativeUrl()
     {
         $this->file('_media/favicon.ico');
         $this->mockPage(currentPage: 'foo/bar');
+
+        $this->assertStringContainsString('<link rel="shortcut icon" href="../media/favicon.ico?v=00000000" type="image/x-icon">', $this->renderTestView());
+    }
+
+    public function testLinkToFaviconUsesAbsoluteBaseUrl()
+    {
+        $this->file('_media/favicon.ico');
+        $this->mockPage(currentPage: 'foo/bar');
+
+        config(['hyde.url' => 'https://example.com']);
+
+        $this->assertStringContainsString('<link rel="shortcut icon" href="https://example.com/media/favicon.ico?v=00000000" type="image/x-icon">', $this->renderTestView());
+    }
+
+    public function testLinkToFaviconDoesNotUseCacheBustingWhenDisabled()
+    {
+        $this->file('_media/favicon.ico');
+        $this->mockPage(currentPage: 'foo/bar');
+
+        config(['hyde.cache_busting' => false]);
 
         $this->assertStringContainsString('<link rel="shortcut icon" href="../media/favicon.ico" type="image/x-icon">', $this->renderTestView());
     }

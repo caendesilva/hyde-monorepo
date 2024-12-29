@@ -201,7 +201,7 @@ class CodeblockFilepathProcessorTest extends TestCase
         HTML;
 
         $expected = <<<'HTML'
-        <pre><code class="language-html"><small class="filepath not-prose"><span class="sr-only">Filepath: </span>foo.html</small></code></pre>
+        <pre><code class="language-html"><small class="relative float-right opacity-50 hover:opacity-100 transition-opacity duration-250 not-prose hidden md:block top-0 right-0"><span class="sr-only">Filepath: </span>foo.html</small></code></pre>
         HTML;
 
         $this->assertSame($expected, CodeblockFilepathProcessor::postprocess($html));
@@ -215,7 +215,7 @@ class CodeblockFilepathProcessorTest extends TestCase
         HTML;
 
         $expected = <<<'HTML'
-        <pre><code class="torchlight"><!-- Syntax highlighted by torchlight.dev --><small class="filepath not-prose"><span class="sr-only">Filepath: </span>foo.html</small><div class="line"><span class="line-number">1</span>&nbsp;</div></code></pre>
+        <pre><code class="torchlight"><!-- Syntax highlighted by torchlight.dev --><small class="relative float-right opacity-50 hover:opacity-100 transition-opacity duration-250 not-prose hidden md:block -top-1 right-1"><span class="sr-only">Filepath: </span>foo.html</small><div class="line"><span class="line-number">1</span>&nbsp;</div></code></pre>
         HTML;
 
         $this->assertSame($expected, CodeblockFilepathProcessor::postprocess($html));
@@ -230,7 +230,7 @@ class CodeblockFilepathProcessorTest extends TestCase
 
         $escaped = e('<a href="">Link</a>');
         $expected = <<<HTML
-        <pre><code class="language-html"><small class="filepath not-prose"><span class="sr-only">Filepath: </span>$escaped</small></code></pre>
+        <pre><code class="language-html"><small class="relative float-right opacity-50 hover:opacity-100 transition-opacity duration-250 not-prose hidden md:block top-0 right-0"><span class="sr-only">Filepath: </span>$escaped</small></code></pre>
         HTML;
 
         $this->assertSame($expected, CodeblockFilepathProcessor::postprocess($html));
@@ -246,7 +246,7 @@ class CodeblockFilepathProcessorTest extends TestCase
         HTML;
 
         $expected = <<<'HTML'
-        <pre><code class="language-html"><small class="filepath not-prose"><span class="sr-only">Filepath: </span><a href="">Link</a></small></code></pre>
+        <pre><code class="language-html"><small class="relative float-right opacity-50 hover:opacity-100 transition-opacity duration-250 not-prose hidden md:block top-0 right-0"><span class="sr-only">Filepath: </span><a href="">Link</a></small></code></pre>
         HTML;
 
         $this->assertSame($expected, CodeblockFilepathProcessor::postprocess($html));

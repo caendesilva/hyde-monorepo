@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace {
     use Hyde\Foundation\HydeKernel;
-    use JetBrains\PhpStorm\Deprecated;
+    use Hyde\Support\Filesystem\MediaFile;
 
     if (! function_exists('hyde')) {
         /**
@@ -16,31 +16,22 @@ namespace {
         }
     }
 
-    if (! function_exists('unslash')) {
-        /**
-         * Remove trailing slashes from the start and end of a string.
-         *
-         * @deprecated This function will be replaced by {@see \Hyde\unslash()} in v2.0
-         *
-         * @codeCoverageIgnore This function is deprecated and will be removed in a future release.
-         */
-        #[Deprecated(reason: 'Replaced by the \Hyde\unslash() function', replacement: '\Hyde\unslash(%parametersList%)', since: '1.7.0')]
-        function unslash(string $string): string
-        {
-            return \Hyde\unslash($string);
-        }
-    }
-
     if (defined('HYDE_COMPATIBILITY_MODE') && HYDE_COMPATIBILITY_MODE === true) {
         // Don't declare these functions when running in compatibility mode.
     } else {
         if (! function_exists('asset')) {
             /**
-             * Get a relative link or URL to an asset in the media directory.
+             * Gets a MediaAsset instance for the given file stored in the `_site/media` folder.
+             * The returned value can be cast into a string in Blade views to resole the URL.
+             *
+             * If a base URL is configured, the image will be returned with a qualified absolute URL.
+             * Otherwise, a relative path will be returned based on the rendered page's location.
+             *
+             * @throws \Hyde\Framework\Exceptions\FileNotFoundException If the file does not exist in the `_media` source directory.
              */
-            function asset(string $name, bool $preferQualifiedUrl = false): string
+            function asset(string $name): MediaFile
             {
-                return hyde()->asset($name, $preferQualifiedUrl);
+                return hyde()->asset($name);
             }
         }
 
@@ -50,7 +41,7 @@ namespace {
              */
             function route(string $key): ?Hyde\Support\Models\Route
             {
-                return hyde()->route($key);
+                return hyde()->routes()->getRoute($key);
             }
         }
 

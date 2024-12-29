@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace Hyde\Framework\Testing\Feature;
 
+use Hyde\Framework\Services\MarkdownService;
+use Hyde\Framework\Features\Navigation\MainNavigationMenu;
+use Hyde\Framework\Features\Navigation\DocumentationSidebar;
+use Illuminate\Contracts\Container\BindingResolutionException;
 use Hyde\Console\ConsoleServiceProvider;
 use Hyde\Framework\HydeServiceProvider;
-use Hyde\Framework\Services\AssetService;
 use Hyde\Framework\Services\BuildTaskService;
 use Hyde\Foundation\HydeCoreExtension;
 use Hyde\Hyde;
@@ -22,6 +25,7 @@ use Illuminate\Support\Facades\Artisan;
  * @covers \Hyde\Framework\HydeServiceProvider
  * @covers \Hyde\Framework\Concerns\RegistersFileLocations
  * @covers \Hyde\Foundation\Providers\ConfigurationServiceProvider
+ * @covers \Hyde\Foundation\Providers\NavigationServiceProvider
  * @covers \Hyde\Foundation\Providers\ViewServiceProvider
  */
 class HydeServiceProviderTest extends TestCase
@@ -50,18 +54,28 @@ class HydeServiceProviderTest extends TestCase
         $this->assertTrue(method_exists($this->provider, 'boot'));
     }
 
-    public function testProviderRegistersAssetServiceAsSingleton()
-    {
-        $this->assertTrue($this->app->bound(AssetService::class));
-        $this->assertInstanceOf(AssetService::class, $this->app->make(AssetService::class));
-        $this->assertSame($this->app->make(AssetService::class), $this->app->make(AssetService::class));
-    }
-
     public function testProviderRegistersBuildTaskServiceAsSingleton()
     {
         $this->assertTrue($this->app->bound(BuildTaskService::class));
         $this->assertInstanceOf(BuildTaskService::class, $this->app->make(BuildTaskService::class));
         $this->assertSame($this->app->make(BuildTaskService::class), $this->app->make(BuildTaskService::class));
+    }
+
+    public function testProviderRegistersMarkdownServiceAsBasicBinding()
+    {
+        $args = ['markdown' => 'foo'];
+
+        $this->assertTrue($this->app->bound(MarkdownService::class));
+        $this->assertInstanceOf(MarkdownService::class, $this->app->make(MarkdownService::class, $args));
+        $this->assertNotSame($this->app->make(MarkdownService::class, $args), $this->app->make(MarkdownService::class, $args));
+    }
+
+    public function testCanSwapMarkdownServiceBinding()
+    {
+        $this->app->bind(MarkdownService::class, fn () => 'foo');
+
+        $this->assertTrue($this->app->bound(MarkdownService::class));
+        $this->assertSame('foo', $this->app->make(MarkdownService::class));
     }
 
     public function testProviderRegistersSourceDirectories()
@@ -316,5 +330,47 @@ class HydeServiceProviderTest extends TestCase
         $this->assertSame('foo', MarkdownPage::outputDirectory());
         $this->assertSame('foo', MarkdownPost::outputDirectory());
         $this->assertSame('foo', DocumentationPage::outputDirectory());
+    }
+
+    public function testCannotGetMainNavigationMenuFromContainerBeforeKernelIsBooted()
+    {
+        $this->expectException(BindingResolutionException::class);
+
+        app('navigation.main');
+    }
+
+    public function testCannotGetDocumentationSidebarFromContainerBeforeKernelIsBooted()
+    {
+        $this->expectException(BindingResolutionException::class);
+
+        app('navigation.sidebar');
+    }
+
+    public function testCanGetMainNavigationMenuFromContainer()
+    {
+        Hyde::boot();
+
+        $this->assertInstanceOf(MainNavigationMenu::class, app('navigation.main'));
+    }
+
+    public function testCanGetDocumentationSidebarFromContainer()
+    {
+        Hyde::boot();
+
+        $this->assertInstanceOf(DocumentationSidebar::class, app('navigation.sidebar'));
+    }
+
+    public function testCanGetMainNavigationMenuFromContainerUsingShorthand()
+    {
+        Hyde::boot();
+
+        $this->assertSame(app('navigation.main'), MainNavigationMenu::get());
+    }
+
+    public function testCanGetDocumentationSidebarFromContainerUsingShorthand()
+    {
+        Hyde::boot();
+
+        $this->assertSame(app('navigation.sidebar'), DocumentationSidebar::get());
     }
 }

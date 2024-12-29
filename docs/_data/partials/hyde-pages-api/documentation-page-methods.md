@@ -19,28 +19,12 @@ No description provided.
 DocumentationPage::homeRouteName(): string
 ```
 
-#### `hasTableOfContents()`
-
-No description provided.
-
-```php
-DocumentationPage::hasTableOfContents(): bool
-```
-
 #### `getOnlineSourcePath()`
 
 No description provided.
 
 ```php
 $page->getOnlineSourcePath(): string|false
-```
-
-#### `getTableOfContents()`
-
-Generate Table of Contents as HTML from a Markdown document body.
-
-```php
-$page->getTableOfContents(): string
 ```
 
 #### `getRouteKey()`

@@ -1,13 +1,17 @@
 @php /** @var \Hyde\Pages\MarkdownPost $post */ @endphp
-<article class="mt-4 mb-8" itemscope itemtype="https://schema.org/Article">
+<article itemprop="item" itemscope itemtype="https://schema.org/BlogPosting">
     <meta itemprop="identifier" content="{{ $post->identifier }}">
     @if($post->getCanonicalUrl())
         <meta itemprop="url" content="{{ $post->getCanonicalUrl()  }}">
     @endif
 
+    @isset($post->image)
+         <meta itemprop="image" content="{{ $post->image }}">
+    @endif
+
     <header>
         <a href="{{ $post->getRoute() }}" class="block w-fit">
-            <h2 class="text-2xl font-bold text-gray-700 hover:text-gray-900 dark:text-gray-200 dark:hover:text-white transition-colors duration-75">
+            <h2 itemprop="headline" class="text-2xl font-bold text-gray-700 hover:text-gray-900 dark:text-gray-200 dark:hover:text-white transition-colors duration-75">
                 {{ $post->data('title') ?? $post->title }}
             </h2>
         </a>
@@ -16,7 +20,7 @@
     <footer>
         @isset($post->date)
             <span class="opacity-75">
-                <span itemprop="dateCreated datePublished">{{ $post->date->short }}</span>{{ isset($post->author) ? ',' : '' }}
+                <time itemprop="dateCreated datePublished" datetime="{{ $post->date->datetime }}">{{ $post->date->short }}</time>{{ isset($post->author) ? ',' : '' }}
             </span>
         @endisset
         @isset($post->author)
@@ -31,7 +35,7 @@
 
     @if($post->data('description') !== null)
         <section role="doc-abstract" aria-label="Excerpt">
-            <p class="leading-relaxed my-1">
+            <p itemprop="description" class="leading-relaxed my-1">
                 {{ $post->data('description') }}
             </p>
         </section>

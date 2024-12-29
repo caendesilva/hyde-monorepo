@@ -9,7 +9,7 @@
             @isset($items)
                 @foreach ($items as $item)
                     <li class="whitespace-nowrap">
-                        @include('hyde::components.navigation.navigation-link')
+                        <x-hyde::navigation.navigation-link :item="$item"/>
                     </li>
                 @endforeach
             @else

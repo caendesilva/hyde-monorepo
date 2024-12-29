@@ -4,8 +4,12 @@ declare(strict_types=1);
 
 namespace Hyde\Framework\Testing\Unit\Views;
 
-use Hyde\Foundation\Facades\Routes;
-use Hyde\Framework\Features\Navigation\NavItem;
+use Hyde\Pages\InMemoryPage;
+use Hyde\Support\Models\Route;
+use Hyde\Testing\TestsBladeViews;
+use Hyde\Testing\Support\TestView;
+use Illuminate\View\ComponentAttributeBag;
+use Hyde\Framework\Features\Navigation\NavigationItem;
 use Hyde\Testing\TestCase;
 
 /**
@@ -13,6 +17,8 @@ use Hyde\Testing\TestCase;
  */
 class NavigationLinkViewTest extends TestCase
 {
+    use TestsBladeViews;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -20,32 +26,128 @@ class NavigationLinkViewTest extends TestCase
         $this->mockPage();
     }
 
-    protected function render(?NavItem $item = null): string
+    protected function testView(array $extraAttributes = []): TestView
     {
-        return view('hyde::components.navigation.navigation-link', [
-            'item' => $item ?? NavItem::forLink('foo.html', 'Foo'),
-        ])->render();
+        return $this->view(view('hyde::components.navigation.navigation-link', [
+            'item' => NavigationItem::create(new Route(new InMemoryPage('foo')), 'Foo', null, $extraAttributes),
+            'attributes' => new ComponentAttributeBag(),
+        ]));
+    }
+
+    public function testComponentRenders()
+    {
+        $this->testView()->assertHasElement('<a>');
     }
 
     public function testComponentLinksToRouteDestination()
     {
-        $this->assertStringContainsString('href="foo.html"', $this->render());
+        $this->testView()->assertAttributeIs('href="foo.html"');
+    }
+
+    public function testComponentResolvesRelativeLinksForRoutes()
+    {
+        $this->mockCurrentPage('foo/bar');
+
+        $this->testView()->assertAttributeIs('href="../foo.html"');
     }
 
     public function testComponentUsesTitle()
     {
-        $this->assertStringContainsString('Foo', $this->render());
+        $this->testView()->assertTextIs('Foo');
+    }
+
+    public function testComponentDoesNotHaveCurrentAttributesWhenCurrentRouteDoesNotMatch()
+    {
+        $this->testView()
+            ->assertDontSee('current')
+            ->assertDoesNotHaveAttribute('aria-current');
     }
 
     public function testComponentIsCurrentWhenCurrentRouteMatches()
     {
-        $this->mockRoute(Routes::get('index'));
-        $this->assertStringContainsString('current', $this->render(NavItem::forRoute(Routes::get('index'), 'Home')));
+        $this->mockCurrentPage('foo');
+
+        $this->testView()
+            ->assertSee('current')
+            ->assertHasAttribute('aria-current')
+            ->assertAttributeIs('aria-current="page"');
     }
 
-    public function testComponentHasAriaCurrentWhenCurrentRouteMatches()
+    public function testComponentDoesNotHaveActiveClassWhenNotActive()
     {
-        $this->mockRoute(Routes::get('index'));
-        $this->assertStringContainsString('aria-current="page"', $this->render(NavItem::forRoute(Routes::get('index'), 'Home')));
+        $this->testView()
+            ->assertHasClass('navigation-link')
+            ->assertDoesNotHaveClass('navigation-link-active');
+    }
+
+    public function testComponentHasActiveClassWhenActive()
+    {
+        $this->mockCurrentPage('foo');
+
+        $this->testView()
+            ->assertHasClass('navigation-link')
+            ->assertHasClass('navigation-link-active');
+    }
+
+    public function testComponentRendersExtraAttributes()
+    {
+        $this->testView(['data-test' => 'value'])
+            ->assertHasAttribute('data-test')
+            ->assertAttributeIs('data-test="value"');
+    }
+
+    public function testComponentRendersMultipleExtraAttributes()
+    {
+        $this->testView(['data-test' => 'value', 'data-foo' => 'bar'])
+            ->assertHasAttribute('data-test')
+            ->assertAttributeIs('data-test="value"')
+            ->assertHasAttribute('data-foo')
+            ->assertAttributeIs('data-foo="bar"');
+    }
+
+    public function testComponentRendersExtraAttributesWithExistingAttributes()
+    {
+        $this->mockCurrentPage('foo');
+
+        $view = $this->testView(['data-test' => 'value']);
+
+        $expected = <<<'HTML'
+        <a href="foo.html" aria-current="page" class="navigation-link block my-2 md:my-0 md:inline-block py-1 text-gray-700 hover:text-gray-900 dark:text-gray-100 navigation-link-active border-l-4 border-indigo-500 md:border-none font-medium -ml-6 pl-5 md:ml-0 md:pl-0 bg-gray-100 dark:bg-gray-800 md:bg-transparent dark:md:bg-transparent" data-test="value">Foo</a>
+        HTML;
+
+        $this->assertSame($expected, $view->getRendered());
+    }
+
+    public function testComponentMergesClassAttributeCorrectly()
+    {
+        $this->testView(['class' => 'custom-class'])
+            ->assertHasClass('navigation-link')
+            ->assertHasClass('custom-class');
+    }
+
+    public function testComponentOverridesDefaultAttributesWithExtraAttributes()
+    {
+        $this->testView(['href' => 'https://example.com'])
+            ->assertAttributeIs('href="https://example.com"');
+    }
+
+    public function testComponentHandlesEmptyExtraAttributes()
+    {
+        $this->testView([])
+            ->assertHasElement('<a>')
+            ->assertTextIs('Foo');
+    }
+
+    public function testComponentState()
+    {
+        $this->mockCurrentPage('foo');
+
+        $view = $this->testView();
+
+        $expected = <<<'HTML'
+        <a href="foo.html" aria-current="page" class="navigation-link block my-2 md:my-0 md:inline-block py-1 text-gray-700 hover:text-gray-900 dark:text-gray-100 navigation-link-active border-l-4 border-indigo-500 md:border-none font-medium -ml-6 pl-5 md:ml-0 md:pl-0 bg-gray-100 dark:bg-gray-800 md:bg-transparent dark:md:bg-transparent">Foo</a>
+        HTML;
+
+        $this->assertSame($expected, $view->getRendered());
     }
 }

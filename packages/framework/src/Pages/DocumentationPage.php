@@ -6,7 +6,6 @@ namespace Hyde\Pages;
 
 use Hyde\Facades\Config;
 use Hyde\Foundation\Facades\Routes;
-use Hyde\Framework\Actions\GeneratesTableOfContents;
 use Hyde\Pages\Concerns\BaseMarkdownPage;
 use Hyde\Support\Models\Route;
 
@@ -49,19 +48,6 @@ class DocumentationPage extends BaseMarkdownPage
         return sprintf('%s/%s.md', trim(Config::getString('docs.source_file_location_base'), '/'), $this->identifier);
     }
 
-    public static function hasTableOfContents(): bool
-    {
-        return Config::getBool('docs.table_of_contents.enabled', true);
-    }
-
-    /**
-     * Generate Table of Contents as HTML from a Markdown document body.
-     */
-    public function getTableOfContents(): string
-    {
-        return (new GeneratesTableOfContents($this->markdown))->execute();
-    }
-
     /**
      * Get the route key for the page.
      *
@@ -70,7 +56,7 @@ class DocumentationPage extends BaseMarkdownPage
     public function getRouteKey(): string
     {
         return Config::getBool('docs.flattened_output_paths', true)
-            ? unslash(static::outputDirectory().'/'.basename($this->identifier))
+            ? unslash(static::outputDirectory().'/'.basename(parent::getRouteKey()))
             : parent::getRouteKey();
     }
 

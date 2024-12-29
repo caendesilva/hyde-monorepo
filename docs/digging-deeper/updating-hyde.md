@@ -116,7 +116,7 @@ Here are the paths you may be interested in copying over: (Using Git will help a
 ├── package.json
 ├── resources/
 ├── tailwind.config.js
-└── webpack.mix.js
+└── vite.config.js
 ```
 
 Next, recompile your assets, if you are not using the built-in assets.

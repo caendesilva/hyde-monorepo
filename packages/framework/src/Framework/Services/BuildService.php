@@ -5,12 +5,11 @@ declare(strict_types=1);
 namespace Hyde\Framework\Services;
 
 use Hyde\Hyde;
+use Hyde\Pages\InMemoryPage;
 use Hyde\Foundation\Facades\Routes;
 use Hyde\Foundation\Kernel\RouteCollection;
 use Hyde\Framework\Actions\StaticPageBuilder;
-use Hyde\Framework\Concerns\InteractsWithDirectories;
 use Hyde\Pages\Concerns\HydePage;
-use Hyde\Support\Filesystem\MediaFile;
 use Hyde\Support\Models\Route;
 use Illuminate\Console\Concerns\InteractsWithIO;
 use Illuminate\Console\OutputStyle;
@@ -18,7 +17,6 @@ use Illuminate\Console\OutputStyle;
 use function class_basename;
 use function preg_replace;
 use function collect;
-use function copy;
 
 /**
  * Moves logic from the build command to a service.
@@ -30,7 +28,6 @@ use function copy;
 class BuildService
 {
     use InteractsWithIO;
-    use InteractsWithDirectories;
 
     protected RouteCollection $router;
 
@@ -46,21 +43,6 @@ class BuildService
         collect($this->getPageTypes())->each(function (string $pageClass): void {
             $this->compilePagesForClass($pageClass);
         });
-    }
-
-    /** @deprecated This method will be replaced by a build task in v2.0 */
-    public function transferMediaAssets(): void
-    {
-        $this->needsDirectory(Hyde::siteMediaPath());
-
-        $this->comment('Transferring Media Assets...');
-        $this->withProgressBar(MediaFile::files(), function (string $identifier): void {
-            $sitePath = Hyde::siteMediaPath($identifier);
-            $this->needsParentDirectory($sitePath);
-            copy(Hyde::mediaPath($identifier), $sitePath);
-        });
-
-        $this->newLine(2);
     }
 
     /**
@@ -81,6 +63,10 @@ class BuildService
 
     protected function getClassPluralName(string $pageClass): string
     {
+        if ($pageClass === InMemoryPage::class) {
+            return 'Dynamic Pages';
+        }
+
         return preg_replace('/([a-z])([A-Z])/', '$1 $2', class_basename($pageClass)).'s';
     }
 
@@ -88,6 +74,10 @@ class BuildService
     protected function getPageTypes(): array
     {
         return Hyde::pages()->map(function (HydePage $page): string {
+            if ($page instanceof InMemoryPage) {
+                return InMemoryPage::class;
+            }
+
             return $page::class;
         })->unique()->values()->toArray();
     }

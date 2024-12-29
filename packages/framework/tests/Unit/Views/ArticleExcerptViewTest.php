@@ -24,7 +24,7 @@ class ArticleExcerptViewTest extends TestCase
     public function testComponentCanBeRendered()
     {
         $view = $this->renderTestView(MarkdownPost::make());
-        $this->assertStringContainsString('https://schema.org/Article', $view);
+        $this->assertStringContainsString('https://schema.org/BlogPosting', $view);
     }
 
     public function testComponentRendersPostData()
@@ -54,14 +54,30 @@ class ArticleExcerptViewTest extends TestCase
         $this->assertStringContainsString('John Doe', $view);
     }
 
+    public function testMetadataHasIsoDate()
+    {
+        $view = $this->renderTestView(MarkdownPost::make(matter: [
+            'date' => '2022-01-01',
+        ]));
+
+        $this->assertStringContainsString('<time itemprop="dateCreated datePublished" datetime="2022-01-01T00:00:00+00:00">Jan 1st, 2022</time>', $view);
+    }
+
+    public function testDateIsNotAddedWhenNotSet()
+    {
+        $view = $this->renderTestView(MarkdownPost::make());
+
+        $this->assertStringNotContainsString('<time', $view);
+    }
+
     public function testThereIsNoCommaAfterDateStringWhenThereIsNoAuthor()
     {
         $view = $this->renderTestView(MarkdownPost::make(matter: [
             'date' => '2022-01-01',
         ]));
 
-        $this->assertStringContainsString('Jan 1st, 2022</span>', $view);
-        $this->assertStringNotContainsString('Jan 1st, 2022</span>,', $view);
+        $this->assertStringContainsString('Jan 1st, 2022</time>', $view);
+        $this->assertStringNotContainsString('Jan 1st, 2022</time>,', $view);
     }
 
     public function testThereIsACommaAfterDateStringWhenThereIsAAuthor()
@@ -71,6 +87,48 @@ class ArticleExcerptViewTest extends TestCase
             'author' => 'John Doe',
         ]));
 
-        $this->assertStringContainsString('Jan 1st, 2022</span>,', $view);
+        $this->assertStringContainsString('Jan 1st, 2022</time>,', $view);
+    }
+
+    public function testItempropImageIsNotAddedWhenThereIsNoImage()
+    {
+        $view = $this->renderTestView(MarkdownPost::make());
+        $this->assertStringNotContainsString('itemprop="image"', $view);
+    }
+
+    public function testItempropImageIsAddedWhenThereIsAnImageWithLocalPath()
+    {
+        $this->file('_media/image.jpg');
+
+        $viewLocal = $this->renderTestView(MarkdownPost::make(matter: [
+            'image' => 'image.jpg',
+        ]));
+
+        $this->assertStringContainsString('itemprop="image"', $viewLocal);
+        $this->assertStringContainsString('content="media/image.jpg?v=00000000"', $viewLocal);
+    }
+
+    public function testItempropImageIsAddedWhenThereIsAnImageWithLocalPathNoCache()
+    {
+        $this->file('_media/image.jpg');
+
+        config(['hyde.cache_busting' => false]);
+
+        $viewLocalNoCache = $this->renderTestView(MarkdownPost::make(matter: [
+            'image' => 'image.jpg',
+        ]));
+
+        $this->assertStringContainsString('itemprop="image"', $viewLocalNoCache);
+        $this->assertStringContainsString('content="media/image.jpg"', $viewLocalNoCache);
+    }
+
+    public function testItempropImageIsAddedWhenThereIsAnImageWithRemoteUrl()
+    {
+        $viewRemote = $this->renderTestView(MarkdownPost::make(matter: [
+            'image' => 'https://example.com/image.jpg',
+        ]));
+
+        $this->assertStringContainsString('itemprop="image"', $viewRemote);
+        $this->assertStringContainsString('content="https://example.com/image.jpg"', $viewRemote);
     }
 }

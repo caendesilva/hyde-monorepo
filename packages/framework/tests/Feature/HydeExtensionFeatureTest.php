@@ -51,7 +51,7 @@ class HydeExtensionFeatureTest extends TestCase
 
         $this->kernel->boot();
 
-        $this->assertSame(['files', 'pages', 'routes'], HydeTestExtension::$callCache);
+        $this->assertSame(['booting', 'files', 'pages', 'routes', 'booted'], HydeTestExtension::$callCache);
 
         HydeTestExtension::$callCache = [];
     }
@@ -133,6 +133,24 @@ class HydeExtensionFeatureTest extends TestCase
         $this->assertEquals(new Route(new TestPageClass('bar')), Routes::get('foo/bar'));
     }
 
+    public function testBootingAndBootedMethodsAreCalledWithKernel()
+    {
+        $this->kernel->registerExtension(BootableTestExtension::class);
+
+        $this->assertSame([], BootableTestExtension::$callCache);
+
+        $this->kernel->boot();
+
+        $this->assertCount(2, BootableTestExtension::$callCache);
+
+        $this->assertInstanceOf(HydeKernel::class, BootableTestExtension::$callCache['booting']);
+        $this->assertInstanceOf(HydeKernel::class, BootableTestExtension::$callCache['booted']);
+        $this->assertSame($this->kernel, BootableTestExtension::$callCache['booting']);
+        $this->assertSame($this->kernel, BootableTestExtension::$callCache['booted']);
+
+        BootableTestExtension::$callCache = [];
+    }
+
     protected function markTestSuccessful(): void
     {
         $this->assertTrue(true);
@@ -164,6 +182,16 @@ class HydeTestExtension extends HydeExtension
     public function discoverRoutes(RouteCollection $collection): void
     {
         static::$callCache[] = 'routes';
+    }
+
+    public function booting(HydeKernel $kernel): void
+    {
+        static::$callCache[] = 'booting';
+    }
+
+    public function booted(HydeKernel $kernel): void
+    {
+        static::$callCache[] = 'booted';
     }
 }
 
@@ -223,5 +251,20 @@ class InspectableTestExtension extends HydeExtension
     public static function getCalled(string $method): array
     {
         return self::$callCache[$method];
+    }
+}
+
+class BootableTestExtension extends HydeExtension
+{
+    public static array $callCache = [];
+
+    public function booting(HydeKernel $kernel): void
+    {
+        static::$callCache['booting'] = $kernel;
+    }
+
+    public function booted(HydeKernel $kernel): void
+    {
+        static::$callCache['booted'] = $kernel;
     }
 }

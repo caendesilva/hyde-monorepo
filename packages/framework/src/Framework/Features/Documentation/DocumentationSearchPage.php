@@ -5,10 +5,11 @@ declare(strict_types=1);
 namespace Hyde\Framework\Features\Documentation;
 
 use Hyde\Hyde;
+use Hyde\Pages\InMemoryPage;
 use Hyde\Pages\DocumentationPage;
-use Hyde\Framework\Actions\StaticPageBuilder;
+use Hyde\Pages\Concerns\HydePage;
+use Hyde\Support\Models\RouteKey;
 use Hyde\Facades\Config;
-use Illuminate\Support\Facades\View;
 
 /**
  * @internal This page is used to render the search page for the documentation.
@@ -17,40 +18,34 @@ use Illuminate\Support\Facades\View;
  * If you want to override this page, you can create a page with the route key "docs/search",
  * then this class will not be applied. For example, `_pages/docs/search.blade.php`.
  */
-class DocumentationSearchPage extends DocumentationPage
+class DocumentationSearchPage extends InMemoryPage
 {
-    /**
-     * Generate the search page and save it to disk.
-     *
-     * @return string The path to the generated file.
-     */
-    public static function generate(): string
-    {
-        return StaticPageBuilder::handle(new static());
-    }
-
     /**
      * Create a new DocumentationSearchPage instance.
      */
     public function __construct()
     {
-        parent::__construct('search', [
+        parent::__construct(static::routeKey(), [
             'title' => 'Search',
-        ]);
-    }
-
-    public function compile(): string
-    {
-        return View::make('hyde::pages.documentation-search')->render();
+            'navigation' => ['hidden' => true],
+            'article' => false,
+        ], view: 'hyde::pages.docs.search');
     }
 
     public static function enabled(): bool
     {
-        return Config::getBool('docs.create_search_page', true) && ! Hyde::routes()->has(self::routeKey());
+        return Config::getBool('docs.create_search_page', true) && ! static::anotherSearchPageExists();
     }
 
     public static function routeKey(): string
     {
-        return parent::outputDirectory().'/search';
+        return RouteKey::fromPage(DocumentationPage::class, 'search')->get();
+    }
+
+    protected static function anotherSearchPageExists(): bool
+    {
+        // Since routes aren't discovered yet due to this page being added in the core extension,
+        // we need to check the page collection directly, instead of the route collection.
+        return Hyde::pages()->first(fn (HydePage $file): bool => $file->getRouteKey() === static::routeKey()) !== null;
     }
 }

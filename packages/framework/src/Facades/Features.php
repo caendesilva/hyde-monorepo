@@ -5,88 +5,86 @@ declare(strict_types=1);
 namespace Hyde\Facades;
 
 use Hyde\Hyde;
-use Hyde\Enums\Feature;
+use Illuminate\Support\Str;
 use Hyde\Pages\MarkdownPost;
 use Hyde\Pages\DocumentationPage;
-use JetBrains\PhpStorm\Deprecated;
+use Hyde\Enums\Feature;
 use Hyde\Support\Concerns\Serializable;
 use Hyde\Support\Contracts\SerializableContract;
-use Hyde\Framework\Concerns\Internal\MockableFeatures;
-use Illuminate\Support\Str;
+use Illuminate\Support\Arr;
 
-use function get_class_methods;
-use function extension_loaded;
-use function str_starts_with;
-use function in_array;
 use function collect;
-use function substr;
+use function array_filter;
+use function extension_loaded;
+use function in_array;
 use function count;
 use function app;
 
 /**
  * Allows features to be enabled and disabled in a simple object-oriented manner.
- *
- * @internal Until this class is split into a service/manager class, it should not be used outside of Hyde as the API is subject to change.
- *
- * @todo Split facade logic to service/manager class. (Initial and mock data could be set with boot/set methods)
- * Based entirely on Laravel Jetstream (License MIT)
- *
- * @see https://jetstream.laravel.com/
  */
 class Features implements SerializableContract
 {
     use Serializable;
-    use MockableFeatures;
+
+    /**
+     * The features that are enabled.
+     *
+     * @var array<\Hyde\Enums\Feature>
+     */
+    protected array $features = [];
+
+    public function __construct()
+    {
+        $this->features = Config::getArray('hyde.features', Feature::cases());
+    }
 
     /**
      * Determine if the given specified is enabled.
      */
-    public static function enabled(Feature $feature): bool
+    public static function has(Feature $feature): bool
     {
-        return static::resolveMockedInstance($feature->name) ?? in_array(
-            $feature, Config::getArray('hyde.features', static::getDefaultOptions())
-        );
+        return in_array($feature, Hyde::features()->features);
     }
 
-    // ================================================
-    // Determine if a given feature is enabled.
-    // ================================================
+    /**
+     * Get all enabled features.
+     *
+     * @return array<string>
+     */
+    public static function enabled(): array
+    {
+        return Arr::map(Hyde::features()->features, fn (Feature $feature): string => Str::kebab($feature->name));
+    }
 
     public static function hasHtmlPages(): bool
     {
-        return static::enabled(Feature::HtmlPages);
+        return static::has(Feature::HtmlPages);
     }
 
     public static function hasBladePages(): bool
     {
-        return static::enabled(Feature::BladePages);
+        return static::has(Feature::BladePages);
     }
 
     public static function hasMarkdownPages(): bool
     {
-        return static::enabled(Feature::MarkdownPages);
+        return static::has(Feature::MarkdownPages);
     }
 
     public static function hasMarkdownPosts(): bool
     {
-        return static::enabled(Feature::MarkdownPosts);
+        return static::has(Feature::MarkdownPosts);
     }
 
     public static function hasDocumentationPages(): bool
     {
-        return static::enabled(Feature::DocumentationPages);
-    }
-
-    public static function hasDocumentationSearch(): bool
-    {
-        return static::enabled(Feature::DocumentationSearch)
-            && static::hasDocumentationPages()
-            && count(DocumentationPage::files()) > 0;
+        return static::has(Feature::DocumentationPages);
     }
 
     public static function hasDarkmode(): bool
     {
-        return static::enabled(Feature::Darkmode);
+        return static::has(Feature::Darkmode);
     }
 
     public static function hasThemeToggleButtons(): bool
@@ -95,129 +93,46 @@ class Features implements SerializableContract
     }
 
     /**
-     * Torchlight is by default enabled automatically when an API token
-     * is set in the .env file but is disabled when running tests.
+     * Can a sitemap be generated?
      */
-    public static function hasTorchlight(): bool
+    public static function hasSitemap(): bool
     {
-        return static::enabled(Feature::Torchlight)
-            && (Config::getNullableString('torchlight.token') !== null)
-            && (app('env') !== 'testing');
-    }
-
-    // =================================================
-    // Configure features to be used in the config file.
-    // =================================================
-
-    /**
-     * @codeCoverageIgnore Deprecated method.
-     *
-     * @deprecated This method will be removed in v2.0. Please use `Feature::HtmlPages` instead.
-     */
-    #[Deprecated(reason: 'Replaced by the \Hyde\Enums\Feature::HtmlPages Enum case', replacement: 'Feature::HtmlPages', since: '1.6.0')]
-    public static function htmlPages(): Feature
-    {
-        return Feature::HtmlPages;
-    }
-
-    /**
-     * @codeCoverageIgnore Deprecated method.
-     *
-     * @deprecated This method will be removed in v2.0. Please use `Feature::BladePages` instead.
-     */
-    #[Deprecated(reason: 'Replaced by the \Hyde\Enums\Feature::BladePages Enum case', replacement: 'Feature::BladePages', since: '1.6.0')]
-    public static function bladePages(): Feature
-    {
-        return Feature::BladePages;
-    }
-
-    /**
-     * @codeCoverageIgnore Deprecated method.
-     *
-     * @deprecated This method will be removed in v2.0. Please use `Feature::MarkdownPages` instead.
-     */
-    #[Deprecated(reason: 'Replaced by the \Hyde\Enums\Feature::MarkdownPages Enum case', replacement: 'Feature::MarkdownPages', since: '1.6.0')]
-    public static function markdownPages(): Feature
-    {
-        return Feature::MarkdownPages;
-    }
-
-    /**
-     * @codeCoverageIgnore Deprecated method.
-     *
-     * @deprecated This method will be removed in v2.0. Please use `Feature::MarkdownPosts` instead.
-     */
-    #[Deprecated(reason: 'Replaced by the \Hyde\Enums\Feature::MarkdownPosts Enum case', replacement: 'Feature::MarkdownPosts', since: '1.6.0')]
-    public static function markdownPosts(): Feature
-    {
-        return Feature::MarkdownPosts;
-    }
-
-    /**
-     * @codeCoverageIgnore Deprecated method.
-     *
-     * @deprecated This method will be removed in v2.0. Please use `Feature::DocumentationPages` instead.
-     */
-    #[Deprecated(reason: 'Replaced by the \Hyde\Enums\Feature::DocumentationPages Enum case', replacement: 'Feature::DocumentationPages', since: '1.6.0')]
-    public static function documentationPages(): Feature
-    {
-        return Feature::DocumentationPages;
-    }
-
-    /**
-     * @codeCoverageIgnore Deprecated method.
-     *
-     * @deprecated This method will be removed in v2.0. Please use `Feature::DocumentationSearch` instead.
-     */
-    #[Deprecated(reason: 'Replaced by the \Hyde\Enums\Feature::DocumentationSearch Enum case', replacement: 'Feature::DocumentationSearch', since: '1.6.0')]
-    public static function documentationSearch(): Feature
-    {
-        return Feature::DocumentationSearch;
-    }
-
-    /**
-     * @codeCoverageIgnore Deprecated method.
-     *
-     * @deprecated This method will be removed in v2.0. Please use `Feature::Darkmode` instead.
-     */
-    #[Deprecated(reason: 'Replaced by the \Hyde\Enums\Feature::Darkmode Enum case', replacement: 'Feature::Darkmode', since: '1.6.0')]
-    public static function darkmode(): Feature
-    {
-        return Feature::Darkmode;
-    }
-
-    /**
-     * @codeCoverageIgnore Deprecated method.
-     *
-     * @deprecated This method will be removed in v2.0. Please use `Feature::Torchlight` instead.
-     */
-    #[Deprecated(reason: 'Replaced by the \Hyde\Enums\Feature::Torchlight Enum case', replacement: 'Feature::Torchlight', since: '1.6.0')]
-    public static function torchlight(): Feature
-    {
-        return Feature::Torchlight;
-    }
-
-    // ====================================================
-    // Dynamic features that in addition to being enabled
-    // in the config file, require preconditions to be met.
-    // ====================================================
-
-    /** Can a sitemap be generated? */
-    public static function sitemap(): bool
-    {
-        return static::resolveMockedInstance('sitemap') ?? Hyde::hasSiteUrl()
+        return Hyde::hasSiteUrl()
             && Config::getBool('hyde.generate_sitemap', true)
             && extension_loaded('simplexml');
     }
 
-    /** Can an RSS feed be generated? */
-    public static function rss(): bool
+    /**
+     * Can an RSS feed be generated?
+     */
+    public static function hasRss(): bool
     {
-        return static::resolveMockedInstance('rss') ?? Hyde::hasSiteUrl()
+        return Hyde::hasSiteUrl()
             && static::hasMarkdownPosts()
             && Config::getBool('hyde.rss.enabled', true)
             && extension_loaded('simplexml')
             && count(MarkdownPost::files()) > 0;
+    }
+
+    /**
+     * Should documentation search be enabled?
+     */
+    public static function hasDocumentationSearch(): bool
+    {
+        return static::has(Feature::DocumentationSearch)
+            && static::hasDocumentationPages()
+            && count(DocumentationPage::files()) > 0;
+    }
+
+    /**
+     * Torchlight is by default enabled automatically when an API token
+     * is set in the `.env` file but is disabled when running tests.
+     */
+    public static function hasTorchlight(): bool
+    {
+        return static::has(Feature::Torchlight)
+            && (Config::getNullableString('torchlight.token') !== null)
+            && (app('env') !== 'testing');
     }
 
     /**
@@ -229,29 +144,20 @@ class Features implements SerializableContract
      */
     public function toArray(): array
     {
-        return collect(get_class_methods(static::class))
-            ->filter(fn (string $method): bool => str_starts_with($method, 'has'))
-            ->mapWithKeys(fn (string $method): array => [
-                Str::kebab(substr($method, 3)) => static::{$method}(),
-            ])->toArray();
+        return Arr::mapWithKeys(Feature::cases(), fn (Feature $feature): array => [
+            Str::kebab($feature->name) => static::has($feature),
+        ]);
     }
 
-    protected static function getDefaultOptions(): array
+    /** @internal This method is not covered by the backward compatibility promise. */
+    public static function mock(string $feature, bool $enabled = null): void
     {
-        return [
-            // Page Modules
-            Feature::HtmlPages,
-            Feature::MarkdownPosts,
-            Feature::BladePages,
-            Feature::MarkdownPages,
-            Feature::DocumentationPages,
-
-            // Frontend Features
-            Feature::Darkmode,
-            Feature::DocumentationSearch,
-
-            // Integrations
-            Feature::Torchlight,
-        ];
+        if ($enabled === true) {
+            // Add the feature if it doesn't already exist.
+            Hyde::features()->features[] = collect(Feature::cases())->firstOrFail(fn (Feature $search): bool => Str::kebab($search->name) === $feature);
+        } else {
+            // Remove the feature if it exists.
+            Hyde::features()->features = array_filter(Hyde::features()->features, fn (Feature $search): bool => Str::kebab($search->name) !== $feature);
+        }
     }
 }

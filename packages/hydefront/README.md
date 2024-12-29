@@ -4,7 +4,6 @@
 [![NPM Downloads](https://img.shields.io/npm/dm/hydefront)](https://www.npmjs.com/package/hydefront)
 [![GitHub package.json version](https://img.shields.io/github/package-json/v/hydephp/hydefront)](https://github.com/hydephp/hydefront)
 [![NPM Version](https://img.shields.io/npm/v/hydefront)](https://www.npmjs.com/package/hydefront)
-[![Build & Push CI](https://github.com/hydephp/hydefront/actions/workflows/node.js.yml/badge.svg)](https://github.com/hydephp/hydefront/actions/workflows/node.js.yml)
 
 
 ## About this repository
@@ -13,14 +12,8 @@ Contains the frontend assets for HydePHP.
 
 ### About the files
 
-- **Hyde.css**:
-The Hyde stylesheet contains a small set of styles that don't make sense to use with Tailwind, or that belong to generated content that is harder to modify.
-
-Normally, this file is imported into the main.css file.
-
 - **App.css**:
-A compiled and minified file containing the TailwindCSS styles for a base Hyde installation. It includes the Hyde.css file. This file is identical to what one would get by running `npm run prod` in a new HydePHP project (which incidentally is exactly how this file is generated).
-
+A compiled and minified file containing the TailwindCSS styles for a base Hyde installation. This file is identical to what one would get by running `npm run build` in a new HydePHP project (which incidentally is exactly how this file is generated).
 
 ## Usage
 
@@ -40,8 +33,9 @@ HydeFront is not intended to be used for standalone projects and comes with no w
 
 Changes in HydeFront are tied to those in the Hyde Framework and differing versions may be incompatible.
 
-| Hyde Version | Version | Supported          | Notes                   |
-|:-------------|---------|--------------------|-------------------------|
-| 1.x LTS      | 3.x     | :white_check_mark: | Latest                  |
-| 0.x Beta     | 2.x     | :x:                | Unsupported             |
-| 0.x Alpha    | 1.x     | :x:                | Unsupported             |
+| Hyde Version | Version | Supported          | Notes       |
+|:-------------|---------|--------------------|-------------|
+| 2.x          | 4.x     | :white_check_mark: | Latest      |
+| 1.x LTS      | 3.x     | :white_check_mark: | LTS Support |
+| 0.x Beta     | 2.x     | :x:                | Unsupported |
+| 0.x Alpha    | 1.x     | :x:                | Unsupported |

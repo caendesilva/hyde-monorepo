@@ -49,14 +49,14 @@ class DocumentationSearchPageTest extends TestCase
 
     public function testEnabledIsFalseWhenRouteExists()
     {
-        Hyde::routes()->put('docs/search', new InMemoryPage('docs/search'));
+        Hyde::pages()->put('docs/search', new InMemoryPage('docs/search'));
         $this->assertFalse(DocumentationSearchPage::enabled());
     }
 
     public function testEnabledIsFalseWhenDisabledAndRouteExists()
     {
         config(['docs.create_search_page' => false]);
-        Hyde::routes()->put('docs/search', new InMemoryPage('docs/search'));
+        Hyde::pages()->put('docs/search', new InMemoryPage('docs/search'));
         $this->assertFalse(DocumentationSearchPage::enabled());
     }
 
@@ -69,5 +69,59 @@ class DocumentationSearchPageTest extends TestCase
     {
         DocumentationPage::setOutputDirectory('foo');
         $this->assertSame('foo/search', DocumentationSearchPage::routeKey());
+    }
+
+    public function testStaticRouteKeyHelperWithRootOutputDirectory()
+    {
+        DocumentationPage::setOutputDirectory('');
+        $this->assertSame('search', DocumentationSearchPage::routeKey());
+    }
+
+    public function testCanRenderSearchPage()
+    {
+        $page = new DocumentationSearchPage();
+
+        Hyde::shareViewData($page);
+        $this->assertStringContainsString('<h1>Search the HydePHP Documentation</h1>', $page->compile());
+    }
+
+    public function testRenderedSearchPageUsesDocumentationPageLayout()
+    {
+        $page = new DocumentationSearchPage();
+
+        Hyde::shareViewData($page);
+        $html = $page->compile();
+
+        $this->assertStringContainsString('<body id="hyde-docs"', $html);
+    }
+
+    public function testRenderedSearchPageDoesNotUseSemanticDocumentationMarkup()
+    {
+        $page = new DocumentationSearchPage();
+
+        Hyde::shareViewData($page);
+        $html = $page->compile();
+
+        $this->assertStringNotContainsString('<header id="document-header"', $html);
+        $this->assertStringNotContainsString('<section id="document-main-content"', $html);
+        $this->assertStringNotContainsString('<footer id="document-footer"', $html);
+    }
+
+    public function testRenderedSearchPageUsesCustomSidebarHeader()
+    {
+        config(['docs.sidebar.header' => 'My Project']);
+        $page = new DocumentationSearchPage();
+
+        Hyde::shareViewData($page);
+        $this->assertStringContainsString('<h1>Search My Project</h1>', $page->compile());
+    }
+
+    public function testRenderedSearchPageExpandsDocsInSidebarHeader()
+    {
+        config(['docs.sidebar.header' => 'Custom Docs']);
+        $page = new DocumentationSearchPage();
+
+        Hyde::shareViewData($page);
+        $this->assertStringContainsString('<h1>Search the Custom Documentation</h1>', $page->compile());
     }
 }

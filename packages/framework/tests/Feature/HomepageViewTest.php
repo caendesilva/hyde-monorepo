@@ -52,7 +52,7 @@ class HomepageViewTest extends TestCase
     {
         Hyde::shareViewData(new BladePage('index'));
 
-        Hyde::pages()->add(new MarkdownPost('hello-world', ['author' => 'Mr Hyde'], 'Hello World!'));
+        Hyde::pages()->add(new MarkdownPost('hello-world', ['author' => 'mr_hyde'], 'Hello World!'));
 
         $view = $this->view(view('hyde::homepages.post-feed'));
 
@@ -61,6 +61,6 @@ class HomepageViewTest extends TestCase
             ->assertSeeHtml('id="post-feed"')
             ->assertSeeHtml('<a href="posts/hello-world.html"')
             ->assertSee('Hello World!')
-            ->assertSee('Mr Hyde');
+            ->assertSee('Mr. Hyde');
     }
 }

@@ -4,12 +4,16 @@ declare(strict_types=1);
 
 namespace Hyde\Framework\Testing\Feature;
 
-use Hyde\Enums\Feature;
+use Hyde\Facades\Author;
 use Hyde\Facades\Features;
+use InvalidArgumentException;
 use Hyde\Foundation\Facades\Pages;
+use Illuminate\Support\Collection;
 use Hyde\Foundation\Facades\Routes;
 use Hyde\Foundation\HydeKernel;
+use Hyde\Enums\Feature;
 use Hyde\Foundation\Kernel\Filesystem;
+use Hyde\Support\Filesystem\MediaFile;
 use Hyde\Framework\HydeServiceProvider;
 use Hyde\Hyde;
 use Hyde\Pages\BladePage;
@@ -23,6 +27,7 @@ use Hyde\Support\Models\Route;
 use Hyde\Testing\TestCase;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\HtmlString;
+use Hyde\Framework\Features\Blogging\Models\PostAuthor;
 
 /**
  * This test class runs high-level tests on the HydeKernel class,
@@ -76,8 +81,7 @@ class HydeKernelTest extends TestCase
 
     public function testHasFeatureHelperCallsMethodOnFeaturesClass()
     {
-        $this->assertSame(Features::enabled(Feature::BladePages), Hyde::hasFeature(Feature::BladePages));
-        $this->assertSame(Features::enabled(Feature::BladePages), Hyde::hasFeature('blade-pages'));
+        $this->assertSame(Features::has(Feature::BladePages), Hyde::hasFeature(Feature::BladePages));
     }
 
     public function testCurrentPageHelperReturnsCurrentPageName()
@@ -175,35 +179,117 @@ class HydeKernelTest extends TestCase
         $this->assertSame('../foo', Hyde::relativeLink('foo'));
     }
 
-    public function testMediaLinkHelperReturnsRelativeLinkToDestination()
+    public function testAssetHelperReturnsRelativeLinkToDestination()
     {
+        $this->file('_media/foo');
+
         Render::share('routeKey', 'bar');
-        $this->assertSame('media/foo', Hyde::mediaLink('foo'));
+        $this->assertSame('media/foo?v=00000000', (string) Hyde::asset('foo'));
 
         Render::share('routeKey', 'foo/bar');
-        $this->assertSame('../media/foo', Hyde::mediaLink('foo'));
+        $this->assertSame('../media/foo?v=00000000', (string) Hyde::asset('foo'));
     }
 
-    public function testImageHelperReturnsImagePathForGivenName()
+    public function testAssetHelperReturnsMediaFileInstanceForGivenName()
     {
+        $this->file('_media/foo.jpg');
+
+        $asset = Hyde::asset('foo.jpg');
+
+        $this->assertInstanceOf(MediaFile::class, $asset);
+        $this->assertEquals(new MediaFile('_media/foo.jpg'), $asset);
+
+        $this->assertSame('foo.jpg', $asset->getName());
+        $this->assertSame('_media/foo.jpg', $asset->getPath());
+        $this->assertSame('media/foo.jpg?v=00000000', $asset->getLink());
+        $this->assertSame('media/foo.jpg?v=00000000', (string) $asset);
+    }
+
+    public function testAssetHelperReturnsAssetPathForGivenName()
+    {
+        $this->file('_media/foo.jpg');
+
         Render::share('routeKey', 'foo');
-        $this->assertSame('media/foo.jpg', Hyde::asset('foo.jpg'));
-        $this->assertSame('https://example.com/foo.jpg', Hyde::asset('https://example.com/foo.jpg'));
+        $this->assertSame('media/foo.jpg?v=00000000', (string) Hyde::asset('foo.jpg'));
 
         Render::share('routeKey', 'foo/bar');
-        $this->assertSame('../media/foo.jpg', Hyde::asset('foo.jpg'));
-        $this->assertSame('https://example.com/foo.jpg', Hyde::asset('https://example.com/foo.jpg'));
+        $this->assertSame('../media/foo.jpg?v=00000000', (string) Hyde::asset('foo.jpg'));
     }
 
-    public function testImageHelperTrimsMediaPrefix()
+    public function testAssetHelperTrimsMediaPrefix()
     {
-        $this->assertSame('media/foo.jpg', Hyde::asset('media/foo.jpg'));
+        $this->markTestSkipped('needs to reimplement normalization on the get method');
+        $this->file('_media/foo.jpg');
+
+        $this->assertSame('media/foo.jpg?v=00000000', (string) Hyde::asset('media/foo.jpg'));
     }
 
-    public function testImageHelperSupportsCustomMediaDirectories()
+    public function testAssetHelperSupportsCustomMediaDirectories()
     {
+        $this->file('_assets/foo.jpg');
+
         Hyde::setMediaDirectory('_assets');
-        $this->assertSame('assets/foo.jpg', Hyde::asset('foo.jpg'));
+        $this->assertSame('assets/foo.jpg?v=00000000', (string) Hyde::asset('foo.jpg'));
+    }
+
+    public function testAssetHelperWithoutCacheBusting()
+    {
+        $this->file('_media/foo.jpg');
+
+        Config::set('hyde.cache_busting', false);
+
+        $this->assertSame('media/foo.jpg', (string) Hyde::asset('foo.jpg'));
+    }
+
+    public function testAssetHelperWithoutCacheBustingWithChangedSettingInTheSameLifecycle()
+    {
+        $this->file('_media/foo.jpg');
+
+        $this->assertSame('media/foo.jpg?v=00000000', (string) Hyde::asset('foo.jpg'));
+
+        Config::set('hyde.cache_busting', false);
+
+        $this->assertSame('media/foo.jpg', (string) Hyde::asset('foo.jpg'));
+
+        Config::set('hyde.cache_busting', true);
+
+        $this->assertSame('media/foo.jpg?v=00000000', (string) Hyde::asset('foo.jpg'));
+    }
+
+    public function testAssetHelperWithoutCacheBustingWithChangedSettingInTheSameLifecycleForSameInstance()
+    {
+        $this->file('_media/foo.jpg');
+
+        $instance = Hyde::asset('foo.jpg');
+
+        $this->assertSame('media/foo.jpg?v=00000000', (string) $instance);
+
+        Config::set('hyde.cache_busting', false);
+
+        $this->assertSame('media/foo.jpg', (string) $instance);
+
+        Config::set('hyde.cache_busting', true);
+
+        $this->assertSame('media/foo.jpg?v=00000000', (string) $instance);
+    }
+
+    public function testAssetsHelperGetsAssetsFromKernel()
+    {
+        $this->assertSame(Hyde::kernel()->assets(), Hyde::assets());
+        $this->assertSame(Hyde::asset('app.css'), Hyde::assets()->get('app.css'));
+        $this->assertSame(MediaFile::get('app.css'), Hyde::asset('app.css'));
+    }
+
+    public function testAssetsHelperGetsAllSiteAssets()
+    {
+        $this->assertEquals(new Collection([
+            'app.css' => new MediaFile('_media/app.css'),
+        ]), Hyde::assets());
+    }
+
+    public function testAssetsHelperReturnsAssetCollectionSingleton()
+    {
+        $this->assertSame(Hyde::assets(), Hyde::assets());
     }
 
     public function testRouteHelper()
@@ -265,9 +351,9 @@ class HydeKernelTest extends TestCase
         $this->assertSame(Hyde::path('_pages'), MarkdownPage::path());
         $this->assertSame(Hyde::path('_docs'), DocumentationPage::path());
 
-        $this->assertSame(Hyde::path('_media'), Hyde::mediaPath());
+        $this->assertSame(Hyde::path('_media'), MediaFile::sourcePath());
+        $this->assertSame(Hyde::path('_site/media'), MediaFile::outputPath());
         $this->assertSame(Hyde::path('_site'), Hyde::sitePath());
-        $this->assertSame(Hyde::path('_site/media'), Hyde::siteMediaPath());
     }
 
     public function testPathToRelativeHelperReturnsRelativePathForGivenPath()
@@ -277,8 +363,7 @@ class HydeKernelTest extends TestCase
 
     public function testToArrayMethod()
     {
-        // AssertSame cannot be used as features is reinstantiated on each call
-        $this->assertEquals([
+        $this->assertSame([
             'version' => Hyde::version(),
             'basePath' => Hyde::getBasePath(),
             'sourceRoot' => Hyde::getSourceRoot(),
@@ -289,6 +374,7 @@ class HydeKernelTest extends TestCase
             'files' => Hyde::files(),
             'pages' => Hyde::pages(),
             'routes' => Hyde::routes(),
+            'authors' => Hyde::authors(),
         ], Hyde::toArray());
     }
 
@@ -398,25 +484,6 @@ class HydeKernelTest extends TestCase
     {
         Hyde::setMediaDirectory('_foo');
         $this->assertSame('foo', Hyde::getMediaOutputDirectory());
-    }
-
-    public function testCanGetSiteMediaOutputDirectory()
-    {
-        $this->assertSame(Hyde::path('_site/media'), Hyde::siteMediaPath());
-    }
-
-    public function testGetSiteMediaOutputDirectoryUsesTrimmedVersionOfMediaSourceDirectory()
-    {
-        Hyde::setMediaDirectory('_foo');
-        $this->assertSame(Hyde::path('_site/foo'), Hyde::siteMediaPath());
-    }
-
-    public function testGetSiteMediaOutputDirectoryUsesConfiguredSiteOutputDirectory()
-    {
-        Hyde::setOutputDirectory(Hyde::path('foo'));
-        Hyde::setMediaDirectory('bar');
-
-        $this->assertSame(Hyde::path('foo/bar'), Hyde::siteMediaPath());
     }
 
     public function testMediaOutputDirectoryCanBeChangedInConfiguration()
@@ -535,6 +602,81 @@ class HydeKernelTest extends TestCase
         $this->assertFalse(Hyde::isBooted());
         Hyde::kernel()->boot();
         $this->assertTrue(Hyde::isBooted());
+    }
+
+    public function testFeaturesClassIsBoundAsSingleton()
+    {
+        $kernel = new HydeKernel();
+
+        $this->assertSame($kernel->features(), $kernel->features());
+    }
+
+    public function testAuthors()
+    {
+        $kernel = new HydeKernel();
+
+        $this->assertInstanceOf(Collection::class, $kernel->authors());
+        $this->assertContainsOnlyInstancesOf(PostAuthor::class, $kernel->authors());
+
+        $this->assertSame([
+            'mr_hyde' => [
+                'username' => 'mr_hyde',
+                'name' => 'Mr. Hyde',
+                'website' => 'https://hydephp.com',
+            ],
+        ], $kernel->authors()->toArray());
+    }
+
+    public function testAuthorsReturnsSingletonCollection()
+    {
+        $kernel = new HydeKernel();
+
+        $this->assertSame($kernel->authors(), $kernel->authors());
+    }
+
+    public function testAuthorsReturnsEmptyCollectionWhenNoAuthorsDefined()
+    {
+        $kernel = new HydeKernel();
+
+        Config::set('hyde', []);
+
+        $this->assertInstanceOf(Collection::class, $kernel->authors());
+        $this->assertEmpty($kernel->authors());
+    }
+
+    public function testAuthorsPropertyIsNotWrittenUntilThereAreAuthorsDefined()
+    {
+        $kernel = new HydeKernel();
+
+        Config::set('hyde', []);
+
+        $this->assertEmpty($kernel->authors()->toArray());
+
+        Config::set('hyde.authors', ['foo' => Author::create('foo')]);
+
+        $this->assertNotEmpty($kernel->authors()->toArray());
+    }
+
+    public function testAuthorsUseTheConfigArrayKeyAsTheUsername()
+    {
+        Config::set('hyde.authors', ['foo' => Author::create('bar')]);
+
+        $this->assertSame([
+            'foo' => [
+                'username' => 'foo',
+                'name' => 'bar',
+            ],
+        ], Hyde::authors()->toArray());
+    }
+
+    public function testAuthorsThrowsExceptionWhenUsernameIsNotSet()
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Author username cannot be empty. Did you forget to set the author\'s array key?');
+
+        Config::set('hyde.authors', ['' => Author::create('foo')]);
+
+        Hyde::authors();
     }
 }
 

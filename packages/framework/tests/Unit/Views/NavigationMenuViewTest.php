@@ -20,6 +20,8 @@ class NavigationMenuViewTest extends TestCase
         parent::setUp();
         $this->mockRoute();
         $this->mockPage();
+
+        Hyde::boot();
     }
 
     protected function render(): string
@@ -71,12 +73,12 @@ class NavigationMenuViewTest extends TestCase
         $contents = $foo->compile();
 
         $this->assertStringContainsString('<a href="foo.html" aria-current="page" class="', $contents);
-        $this->assertStringContainsString('<a href="bar.html"  class="', $contents);
+        $this->assertStringContainsString('<a href="bar.html" class="', $contents);
     }
 
     public function testNavigationMenuWithDropdownPages()
     {
-        config(['hyde.navigation.subdirectories' => 'dropdown']);
+        config(['hyde.navigation.subdirectory_display' => 'dropdown']);
 
         $page = new MarkdownPage('page');
         $bar = new MarkdownPage('foo/bar');
@@ -102,7 +104,7 @@ class NavigationMenuViewTest extends TestCase
 
     public function testNavigationMenuWithDropdownPagesWithRootGroupPage()
     {
-        config(['hyde.navigation.subdirectories' => 'dropdown']);
+        config(['hyde.navigation.subdirectory_display' => 'dropdown']);
 
         $foo = new MarkdownPage('foo');
         $bar = new MarkdownPage('foo/bar');

@@ -28,13 +28,13 @@ class GlobalMetadataBag extends MetadataBag
             $metadata->add($item);
         }
 
-        if (Features::sitemap()) {
+        if (Features::hasSitemap()) {
             $metadata->add(Meta::link('sitemap', Hyde::url('sitemap.xml'), [
                 'type' => 'application/xml', 'title' => 'Sitemap',
             ]));
         }
 
-        if (Features::rss()) {
+        if (Features::hasRss()) {
             $metadata->add(Meta::link('alternate', Hyde::url(RssFeedGenerator::getFilename()), [
                 'type' => 'application/rss+xml', 'title' => RssFeedGenerator::getDescription(),
             ]));

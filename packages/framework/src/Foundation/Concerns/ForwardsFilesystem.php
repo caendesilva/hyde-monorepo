@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Hyde\Foundation\Concerns;
 
 use Hyde\Foundation\Kernel\Filesystem;
+use Illuminate\Support\Collection;
 
 /**
  * @internal Single-use trait for the HydeKernel class.
@@ -28,19 +29,9 @@ trait ForwardsFilesystem
         return $this->filesystem->vendorPath($path, $package);
     }
 
-    public function mediaPath(string $path = ''): string
-    {
-        return $this->filesystem->mediaPath($path);
-    }
-
     public function sitePath(string $path = ''): string
     {
         return $this->filesystem->sitePath($path);
-    }
-
-    public function siteMediaPath(string $path = ''): string
-    {
-        return $this->filesystem->siteMediaPath($path);
     }
 
     public function pathToAbsolute(string|array $path): string|array
@@ -51,5 +42,11 @@ trait ForwardsFilesystem
     public function pathToRelative(string $path): string
     {
         return $this->filesystem->pathToRelative($path);
+    }
+
+    /** @return \Illuminate\Support\Collection<string, \Hyde\Support\Filesystem\MediaFile> */
+    public function assets(): Collection
+    {
+        return $this->filesystem->assets();
     }
 }

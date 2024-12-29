@@ -18,7 +18,7 @@ class ScriptsComponentViewTest extends TestCase
 
     protected function renderTestView(): string
     {
-        config(['hyde.enable_cache_busting' => false]);
+        config(['hyde.cache_busting' => false]);
         $this->mockCurrentPage($this->mockCurrentPage ?? '');
 
         return Blade::render(file_get_contents(

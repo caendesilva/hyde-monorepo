@@ -22,12 +22,6 @@ use Illuminate\Support\Facades\File;
  */
 class DocumentationPageTest extends TestCase
 {
-    public function testCanGenerateTableOfContents()
-    {
-        $page = DocumentationPage::make(markdown: '# Foo');
-        $this->assertIsString($page->getTableOfContents());
-    }
-
     public function testCanGetCurrentPagePath()
     {
         $page = DocumentationPage::make('foo');
@@ -199,17 +193,6 @@ class DocumentationPageTest extends TestCase
         (new HydeServiceProvider($this->app))->register();
 
         $this->assertSame('foo/bar/index', DocumentationPage::homeRouteName());
-    }
-
-    public function testHasTableOfContents()
-    {
-        $this->assertIsBool(DocumentationPage::hasTableOfContents());
-
-        Config::set('docs.table_of_contents.enabled', true);
-        $this->assertTrue(DocumentationPage::hasTableOfContents());
-
-        Config::set('docs.table_of_contents.enabled', false);
-        $this->assertFalse(DocumentationPage::hasTableOfContents());
     }
 
     public function testCompiledPagesOriginatingInSubdirectoriesGetOutputToRootDocsPath()

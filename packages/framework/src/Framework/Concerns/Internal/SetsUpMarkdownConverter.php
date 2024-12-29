@@ -8,6 +8,7 @@ use Hyde\Facades\Config;
 use Hyde\Markdown\Processing\BladeDownProcessor;
 use Hyde\Markdown\Processing\ShortcodeProcessor;
 use Hyde\Markdown\Processing\CodeblockFilepathProcessor;
+use Hyde\Markdown\Processing\DynamicMarkdownLinkProcessor;
 use Torchlight\Commonmark\V2\TorchlightExtension;
 
 use function array_merge;
@@ -24,10 +25,6 @@ trait SetsUpMarkdownConverter
 {
     protected function enableDynamicExtensions(): void
     {
-        if ($this->canEnablePermalinks()) {
-            $this->configurePermalinksExtension();
-        }
-
         if ($this->canEnableTorchlight()) {
             $this->addExtension(TorchlightExtension::class);
         }
@@ -73,6 +70,8 @@ trait SetsUpMarkdownConverter
             CodeblockFilepathProcessor::class,
             Config::getBool('markdown.features.codeblock_filepaths', true)
         );
+
+        $this->registerPostProcessor(DynamicMarkdownLinkProcessor::class);
     }
 
     protected function registerPreProcessor(string $class, bool $when = true): void

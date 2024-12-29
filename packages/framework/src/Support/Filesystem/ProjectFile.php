@@ -11,8 +11,6 @@ use Hyde\Hyde;
 use Hyde\Support\Concerns\Serializable;
 use Hyde\Support\Contracts\SerializableContract;
 
-use function pathinfo;
-
 /**
  * Filesystem abstraction for a file stored in the project.
  */
@@ -71,6 +69,6 @@ abstract class ProjectFile implements SerializableContract
 
     public function getExtension(): string
     {
-        return pathinfo($this->getAbsolutePath(), PATHINFO_EXTENSION);
+        return Filesystem::extension($this->getPath());
     }
 }

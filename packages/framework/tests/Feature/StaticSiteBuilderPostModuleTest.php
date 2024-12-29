@@ -23,6 +23,8 @@ class StaticSiteBuilderPostModuleTest extends TestCase
     {
         parent::setUp();
 
+        $this->file('_media/image.png');
+
         $this->post = MarkdownPost::make('test-post', [
             'title' => 'Adventures in Wonderland',
             'description' => 'All in the golden afternoon, full leisurely we glide.',
@@ -96,7 +98,7 @@ class StaticSiteBuilderPostModuleTest extends TestCase
     public function testPostContainsExpectedItemprops()
     {
         $this->inspectHtml([
-            'itemtype="https://schema.org/Article"',
+            'itemtype="https://schema.org/BlogPosting"',
             'itemtype="https://schema.org/Person"',
             'itemprop="identifier"',
             'itemprop="headline"',
@@ -119,9 +121,9 @@ class StaticSiteBuilderPostModuleTest extends TestCase
     public function testPostImageIsResolvedRelatively()
     {
         $this->inspectHtml([
-            '<meta property="og:image" content="../media/image.png">',
-            '<meta itemprop="url" content="../media/image.png">',
-            '<meta itemprop="contentUrl" content="../media/image.png">',
+            '<meta property="og:image" content="../media/image.png?v=00000000">',
+            '<meta itemprop="url" content="../media/image.png?v=00000000">',
+            '<meta itemprop="contentUrl" content="../media/image.png?v=00000000">',
         ]);
     }
 

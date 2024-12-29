@@ -45,7 +45,7 @@ exit(main(function (): int {
 
     $this->info('Updating version in dist files...');
     $this->line('---');
-    passthru('php packages/hydefront/.github/scripts/post-build.php --fix --skip-root-version-check', $fixExitCode);
+    passthru('php packages/hydefront/.github/scripts/post-build.php --skip-root-version-check', $fixExitCode);
     if ($fixExitCode !== 0) {
         $this->error('Failed to update version in dist files');
         FileBackupHelper::restore();

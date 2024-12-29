@@ -36,6 +36,13 @@ abstract class UnitTestCase extends BaseTestCase
 
     public static function tearDownAfterClass(): void
     {
+        // Todo: Ensure all tests properly clean up after themselves
+        Mockery::close();
+
+        if (Mockery::getContainer()->getMocks()) {
+            self::markTestIncomplete('Mockery expectations were not verified and state was not reset.');
+        }
+
         if (app()->bound(Filesystem::class) && app()->make(Filesystem::class) instanceof Mockery\MockInterface) {
             app()->forgetInstance(Filesystem::class);
         }

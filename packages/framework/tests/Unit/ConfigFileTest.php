@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Hyde\Framework\Testing\Unit;
 
-use Hyde\Facades\Features;
+use Hyde\Enums\Feature;
 use Hyde\Foundation\HydeCoreExtension;
 use Hyde\Hyde;
 use Hyde\Pages\BladePage;
@@ -13,7 +13,6 @@ use Hyde\Pages\HtmlPage;
 use Hyde\Pages\MarkdownPage;
 use Hyde\Pages\MarkdownPost;
 use Hyde\Testing\UnitTestCase;
-use ReflectionClass;
 
 /**
  * @see \Hyde\Framework\Testing\Unit\HydeConfigFilesAreMatchingTest
@@ -79,7 +78,7 @@ class ConfigFileTest extends UnitTestCase
     public function testDefaultFeaturesArrayMatchesDefaultFeatures()
     {
         expect($this->getConfig('features'))
-            ->toBe((new ReflectionClass(Features::class))->getMethod('getDefaultOptions')->invoke(null));
+            ->toBe(Feature::cases());
     }
 
     protected function getConfig(string $option): mixed

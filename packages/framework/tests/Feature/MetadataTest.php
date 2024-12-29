@@ -411,19 +411,6 @@ class MetadataTest extends TestCase
         $this->assertPageDoesNotHaveMetadata($page, '<meta property="og:article:published_time"');
     }
 
-    public function testAddsImagePropertyWhenImageIsSetInPost()
-    {
-        $page = new MarkdownPost(matter: ['image' => 'image.jpg']);
-
-        $this->assertPageHasMetadata($page, '<meta property="og:image" content="../media/image.jpg">');
-    }
-
-    public function testDoesNotAddImagePropertyWhenImageIsNotSetInPost()
-    {
-        $page = new MarkdownPost();
-        $this->assertPageDoesNotHaveMetadata($page, '<meta property="og:image"');
-    }
-
     public function testAddsTypePropertyAutomatically()
     {
         $page = new MarkdownPost();
@@ -438,72 +425,113 @@ class MetadataTest extends TestCase
         $this->assertSame('<meta property="og:type" content="article">', $page->metadata->render());
     }
 
+    public function testDoesNotAddImagePropertyWhenImageIsNotSetInPost()
+    {
+        $page = new MarkdownPost();
+        $this->assertPageDoesNotHaveMetadata($page, '<meta property="og:image"');
+    }
+
+    public function testAddsImagePropertyWhenImageIsSetInPost()
+    {
+        $this->file('_media/image.jpg');
+        $page = new MarkdownPost(matter: ['image' => 'image.jpg']);
+
+        $this->assertPageHasMetadata($page, '<meta property="og:image" content="../media/image.jpg?v=00000000">');
+    }
+
     public function testDynamicPostMetaPropertiesContainsImageMetadataWhenFeaturedImageSetToString()
     {
+        $this->file('_media/foo.jpg');
+
         $page = new MarkdownPost(matter: [
             'image' => 'foo.jpg',
         ]);
 
-        $this->assertPageHasMetadata($page, '<meta property="og:image" content="../media/foo.jpg">');
+        $this->assertPageHasMetadata($page, '<meta property="og:image" content="../media/foo.jpg?v=00000000">');
     }
 
     public function testDynamicPostMetaPropertiesContainsImageLinkThatIsAlwaysRelative()
     {
+        $this->file('_media/foo.jpg');
+
         $page = new MarkdownPost(matter: [
             'image' => 'foo.jpg',
         ]);
 
-        $this->assertPageHasMetadata($page, '<meta property="og:image" content="../media/foo.jpg">');
+        $this->assertPageHasMetadata($page, '<meta property="og:image" content="../media/foo.jpg?v=00000000">');
     }
 
     public function testDynamicPostMetaPropertiesContainsImageLinkThatIsAlwaysRelativeForNestedPosts()
     {
+        $this->file('_media/foo.jpg');
+
         $page = new MarkdownPost('foo/bar', matter: [
             'image' => 'foo.jpg',
         ]);
 
-        $this->assertPageHasMetadata($page, '<meta property="og:image" content="../../media/foo.jpg">');
+        $this->assertPageHasMetadata($page, '<meta property="og:image" content="../../media/foo.jpg?v=00000000">');
     }
 
     public function testDynamicPostMetaPropertiesContainsImageLinkThatIsAlwaysRelativeForNestedOutputDirectories()
     {
         MarkdownPost::setOutputDirectory('_posts/foo');
 
+        $this->file('_media/foo.jpg');
+
         $page = new MarkdownPost(matter: [
             'image' => 'foo.jpg',
         ]);
 
-        $this->assertPageHasMetadata($page, '<meta property="og:image" content="../../media/foo.jpg">');
+        $this->assertPageHasMetadata($page, '<meta property="og:image" content="../../media/foo.jpg?v=00000000">');
     }
 
     public function testDynamicPostMetaPropertiesContainsImageLinkThatIsAlwaysRelativeForNestedPostsAndNestedOutputDirectories()
     {
         MarkdownPost::setOutputDirectory('_posts/foo');
 
+        $this->file('_media/foo.jpg');
+
         $page = new MarkdownPost('bar/baz', matter: [
             'image' => 'foo.jpg',
         ]);
 
-        $this->assertPageHasMetadata($page, '<meta property="og:image" content="../../../media/foo.jpg">');
+        $this->assertPageHasMetadata($page, '<meta property="og:image" content="../../../media/foo.jpg?v=00000000">');
     }
 
     public function testDynamicPostMetaPropertiesContainsImageLinkThatUsesTheConfiguredMediaDirectory()
     {
         Hyde::setMediaDirectory('assets');
 
+        $this->file('assets/foo.jpg');
+
         $page = new MarkdownPost(matter: [
             'image' => 'foo.jpg',
         ]);
 
-        $this->assertPageHasMetadata($page, '<meta property="og:image" content="../assets/foo.jpg">');
+        $this->assertPageHasMetadata($page, '<meta property="og:image" content="../assets/foo.jpg?v=00000000">');
     }
 
     public function testDynamicPostMetaPropertiesContainsImageMetadataWhenFeaturedImageSetToArrayWithPath()
     {
+        $this->file('_media/foo.jpg');
+
         $page = new MarkdownPost(matter: [
             'image' => [
                 'source' => 'foo.jpg',
             ],
+        ]);
+
+        $this->assertPageHasMetadata($page, '<meta property="og:image" content="../media/foo.jpg?v=00000000">');
+    }
+
+    public function testDynamicPostMetaPropertiesContainsImageLinkWithoutCacheBusting()
+    {
+        config(['hyde.cache_busting' => false]);
+
+        $this->file('_media/foo.jpg');
+
+        $page = new MarkdownPost(matter: [
+            'image' => 'foo.jpg',
         ]);
 
         $this->assertPageHasMetadata($page, '<meta property="og:image" content="../media/foo.jpg">');
@@ -528,7 +556,7 @@ class MetadataTest extends TestCase
             ],
         ]);
 
-        $this->assertPageHasMetadata($page, '<meta name="author" content="username">');
+        $this->assertPageHasMetadata($page, '<meta name="author" content="Username">');
     }
 
     public function testDynamicPostAuthorReturnsAuthorNameWhenAuthorSetToArrayUsingName()

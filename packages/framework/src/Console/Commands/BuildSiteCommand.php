@@ -26,11 +26,12 @@ class BuildSiteCommand extends Command
 {
     /** @var string */
     protected $signature = 'build
-        {--run-dev : Run the NPM dev script after build}
-        {--run-prod : Run the NPM prod script after build}
+        {--run-vite : Build frontend assets using Vite}
         {--run-prettier : Format the output using NPM Prettier}
         {--pretty-urls : Should links in output use pretty URLs?}
-        {--no-api : Disable API calls, for example, Torchlight}';
+        {--no-api : Disable API calls, for example, Torchlight}
+        {--run-dev : [Removed] Use --run-vite instead}
+        {--run-prod : [Removed] Use --run-vite instead}';
 
     /** @var string */
     protected $description = 'Build the static site';
@@ -40,6 +41,8 @@ class BuildSiteCommand extends Command
 
     public function handle(): int
     {
+        $this->checkForDeprecatedRunMixCommandUsage();
+
         $timeStart = microtime(true);
 
         $this->title('Building your static site!');
@@ -49,8 +52,6 @@ class BuildSiteCommand extends Command
         $this->configureBuildTaskService();
 
         $this->runPreBuildActions();
-
-        $this->service->transferMediaAssets();
 
         $this->service->compileStaticPages();
 
@@ -87,6 +88,10 @@ class BuildSiteCommand extends Command
             Config::set(['hyde.pretty_urls' => true]);
         }
 
+        if ($this->option('run-vite')) {
+            $this->runNodeCommand('npm run build', 'Building frontend assets for production!');
+        }
+
         $this->taskService->runPreBuildTasks();
     }
 
@@ -100,14 +105,6 @@ class BuildSiteCommand extends Command
                 'Prettifying code!',
                 'prettify code'
             );
-        }
-
-        if ($this->option('run-dev')) {
-            $this->runNodeCommand('npm run dev', 'Building frontend assets for development!');
-        }
-
-        if ($this->option('run-prod')) {
-            $this->runNodeCommand('npm run prod', 'Building frontend assets for production!');
         }
     }
 
@@ -159,5 +156,24 @@ class BuildSiteCommand extends Command
         }
 
         return Command::SUCCESS;
+    }
+
+    /**
+     * This method is called when the removed --run-dev or --run-prod options are used.
+     *
+     * @deprecated Use --run-vite instead
+     * @since v2.0 - This will be removed after 2-3 minor releases depending on the timeframe between them. (~v2.3)
+     *
+     * @codeCoverageIgnore
+     */
+    protected function checkForDeprecatedRunMixCommandUsage(): void
+    {
+        if ($this->option('run-dev') || $this->option('run-prod')) {
+            $this->error('The --run-dev and --run-prod options have been removed in HydePHP v2.0.');
+            $this->info('Please use --run-vite instead to build assets for production with Vite.');
+            $this->line('See https://github.com/hydephp/develop/pull/2013 for more information.');
+
+            exit(Command::INVALID);
+        }
     }
 }

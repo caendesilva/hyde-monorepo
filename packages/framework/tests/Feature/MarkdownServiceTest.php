@@ -6,6 +6,7 @@ namespace Hyde\Framework\Testing\Feature;
 
 use Hyde\Framework\Services\MarkdownService;
 use Hyde\Pages\DocumentationPage;
+use Hyde\Pages\MarkdownPage;
 use Hyde\Testing\TestCase;
 use Illuminate\Support\Facades\Config;
 
@@ -25,18 +26,39 @@ class MarkdownServiceTest extends TestCase
         $this->assertSame("<h1>Hello World!</h1>\n", $html);
     }
 
-    public function testServiceCanParseMarkdownToHtmlWithPermalinks()
+    public function testServiceCanParseMarkdownToHtmlWithPermalinksDependingOnConfiguration()
     {
         $markdown = '## Hello World!';
 
-        $html = (new MarkdownService($markdown))->withPermalinks()->parse();
+        $html = (new MarkdownService($markdown, DocumentationPage::class))->parse();
 
         $this->assertIsString($html);
+        $this->assertStringContainsString('heading-permalink', $html, 'Permalink should be added to documentation pages by default');
         $this->assertSame(
-            '<h2>Hello World!<a id="hello-world" href="#hello-world" class="heading-permalink" '.
-            'title="Permalink"></a></h2>'."\n",
-            $html
+            '<h2 id="hello-world" class="group w-fit scroll-mt-2">Hello World!<a href="#hello-world" class="heading-permalink opacity-0 ml-1 transition-opacity duration-300 ease-linear px-1 group-hover:opacity-100 focus:opacity-100 group-hover:grayscale-0 focus:grayscale-0" title="Permalink">#</a></h2>'."\n", $html
         );
+
+        $html = (new MarkdownService($markdown))->parse();
+        $this->assertStringNotContainsString('heading-permalink', $html, 'Permalink should not be be added when the page class is not set');
+
+        $html = (new MarkdownService($markdown, MarkdownPage::class))->parse();
+        $this->assertStringNotContainsString('heading-permalink', $html, 'Permalink should not be added to other pages by default');
+
+        Config::set('markdown.permalinks.pages', [MarkdownPage::class]);
+
+        $html = (new MarkdownService($markdown, MarkdownPage::class))->parse();
+        $this->assertStringContainsString('heading-permalink', $html, 'Permalink should be added to pages when configured');
+
+        $html = (new MarkdownService($markdown, DocumentationPage::class))->parse();
+        $this->assertStringNotContainsString('heading-permalink', $html, 'Permalink should not be added to pages when not configured');
+
+        Config::set('markdown.permalinks.pages', []);
+
+        $html = (new MarkdownService($markdown, DocumentationPage::class))->parse();
+        $this->assertStringNotContainsString('heading-permalink', $html, 'Permalinks should not be added to any pages when disabled');
+
+        $html = (new MarkdownService($markdown, MarkdownPage::class))->parse();
+        $this->assertStringNotContainsString('heading-permalink', $html, 'Permalinks should not be added to any pages when disabled');
     }
 
     public function testTorchlightExtensionIsNotEnabledByDefault()
@@ -157,14 +179,6 @@ class MarkdownServiceTest extends TestCase
         $this->assertContains('table-of-contents', $service->features);
     }
 
-    public function testMethodWithPermalinksMethodChainAddsThePermalinksFeature()
-    {
-        $service = $this->makeService();
-
-        $service->withPermalinks();
-        $this->assertContains('permalinks', $service->features);
-    }
-
     public function testHasFeatureReturnsTrueIfTheFeatureIsInTheArray()
     {
         $service = $this->makeService();
@@ -178,30 +192,6 @@ class MarkdownServiceTest extends TestCase
         $service = $this->makeService();
 
         $this->assertFalse($service->hasFeature('test'));
-    }
-
-    public function testMethodCanEnablePermalinksReturnsTrueIfThePermalinksFeatureIsInTheArray()
-    {
-        $service = $this->makeService();
-
-        $service->addFeature('permalinks');
-        $this->assertTrue($service->canEnablePermalinks());
-    }
-
-    public function testMethodCanEnablePermalinksIsAutomaticallyForDocumentationPages()
-    {
-        $service = new MarkdownServiceTestClass(pageClass: DocumentationPage::class);
-
-        Config::set('docs.table_of_contents.enabled', true);
-
-        $this->assertTrue($service->canEnablePermalinks());
-    }
-
-    public function testMethodCanEnablePermalinksReturnsFalseIfThePermalinksFeatureIsNotInTheArray()
-    {
-        $service = $this->makeService();
-
-        $this->assertFalse($service->canEnablePermalinks());
     }
 
     public function testMethodCanEnableTorchlightReturnsTrueIfTheTorchlightFeatureIsInTheArray()

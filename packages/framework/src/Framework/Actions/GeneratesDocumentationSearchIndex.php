@@ -4,9 +4,7 @@ declare(strict_types=1);
 
 namespace Hyde\Framework\Actions;
 
-use Hyde\Hyde;
 use Hyde\Facades\Config;
-use Hyde\Facades\Filesystem;
 use Hyde\Framework\Concerns\InteractsWithDirectories;
 use Hyde\Pages\DocumentationPage;
 use Illuminate\Support\Collection;
@@ -16,17 +14,16 @@ use function in_array;
 use function trim;
 
 /**
- * @internal Generate a JSON file that can be used as a search index for documentation pages.
+ * @internal Generate a JSON string that can be used as a search index for documentation pages.
  */
 class GeneratesDocumentationSearchIndex
 {
     use InteractsWithDirectories;
 
     protected Collection $index;
-    protected string $path;
 
     /**
-     * Generate the search index and save it to disk.
+     * @since v2.x This method returns the JSON string instead of saving it to disk and returning the path.
      *
      * @return string The path to the generated file.
      */
@@ -34,21 +31,19 @@ class GeneratesDocumentationSearchIndex
     {
         $service = new static();
         $service->run();
-        $service->save();
 
-        return $service->path;
+        return $service->index->toJson();
     }
 
     protected function __construct()
     {
         $this->index = new Collection();
-        $this->path = $this->getPath();
     }
 
     protected function run(): void
     {
         DocumentationPage::all()->each(function (DocumentationPage $page): void {
-            if (! in_array($page->identifier, Config::getArray('docs.exclude_from_search', []))) {
+            if (! in_array($page->identifier, $this->getPagesToExcludeFromSearch())) {
                 $this->index->push($this->generatePageEntry($page));
             }
         });
@@ -67,13 +62,6 @@ class GeneratesDocumentationSearchIndex
         ];
     }
 
-    protected function save(): void
-    {
-        $this->needsParentDirectory($this->path);
-
-        Filesystem::putContents($this->path, $this->index->toJson());
-    }
-
     protected function getSearchContentForDocument(DocumentationPage $page): string
     {
         return (new ConvertsMarkdownToPlainText($page->markdown->body()))->execute();
@@ -88,8 +76,10 @@ class GeneratesDocumentationSearchIndex
         return "$slug.html";
     }
 
-    protected function getPath(): string
+    protected function getPagesToExcludeFromSearch(): array
     {
-        return Hyde::sitePath(DocumentationPage::outputDirectory().'/search.json');
+        return array_merge(Config::getArray('docs.exclude_from_search', []),
+            Config::getBool('docs.create_search_page', true) ? ['search'] : []
+        );
     }
 }

@@ -1,5 +1,5 @@
-<article aria-label="Article" id="{{ $page->identifier }}" itemscope itemtype="https://schema.org/Article"
-    @class(['post-article mx-auto', config('markdown.prose_classes', 'prose dark:prose-invert'), 'torchlight-enabled' => Features::hasTorchlight()])>
+<article aria-label="Article" id="{{ $page->identifier }}" itemscope itemtype="https://schema.org/BlogPosting"
+    @class(['post-article mx-auto', config('markdown.prose_classes', 'prose dark:prose-invert')])>
     <meta itemprop="identifier" content="{{ $page->identifier }}">
     @if($page->getCanonicalUrl() !== null)
         <meta itemprop="url" content="{{ $page->getCanonicalUrl() }}">

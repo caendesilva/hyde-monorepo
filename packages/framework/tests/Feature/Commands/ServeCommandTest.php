@@ -7,6 +7,7 @@ namespace Hyde\Framework\Testing\Feature\Commands;
 use Closure;
 use Hyde\Hyde;
 use Hyde\Testing\TestCase;
+use Illuminate\Contracts\Process\InvokedProcess;
 use Illuminate\Support\Facades\Process;
 use TypeError;
 
@@ -138,6 +139,11 @@ class ServeCommandTest extends TestCase
 
     public function testHydeServeCommandPassesThroughProcessOutput()
     {
+        $mockProcess = mock(InvokedProcess::class);
+        $mockProcess->shouldReceive('running')
+            ->once()
+            ->andReturn(false);
+
         Process::shouldReceive('forever')
             ->once()
             ->withNoArgs()
@@ -148,14 +154,14 @@ class ServeCommandTest extends TestCase
             ->with(['HYDE_SERVER_REQUEST_OUTPUT' => false])
             ->andReturnSelf();
 
-        Process::shouldReceive('run')
+        Process::shouldReceive('start')
             ->once()
             ->withArgs(function (string $command, Closure $handle) {
                 $handle('type', 'foo');
 
                 return $command === "php -S localhost:8080 {$this->binaryPath()}";
             })
-            ->andReturnSelf();
+            ->andReturn($mockProcess);
 
         $this->artisan('serve --no-ansi')
             ->expectsOutput('Starting the HydeRC server... Use Ctrl+C to stop')
@@ -172,6 +178,110 @@ class ServeCommandTest extends TestCase
             ->assertExitCode(0);
 
         Process::assertRan("php -S localhost:8080 {$this->binaryPath()}");
+    }
+
+    public function testHydeServeCommandWithViteOption()
+    {
+        $this->cleanUpWhenDone('app/storage/framework/cache/vite.hot');
+
+        $mockViteProcess = mock(InvokedProcess::class);
+        $mockViteProcess->shouldReceive('running')
+            ->once()
+            ->andReturn(true);
+        $mockViteProcess->shouldReceive('latestOutput')
+            ->once()
+            ->andReturn('vite latest output');
+
+        $mockServerProcess = mock(InvokedProcess::class);
+        $mockServerProcess->shouldReceive('running')
+            ->times(2)
+            ->andReturn(true, false);
+
+        Process::shouldReceive('forever')
+            ->twice()
+            ->withNoArgs()
+            ->andReturnSelf();
+
+        Process::shouldReceive('env')
+            ->once()
+            ->with(['HYDE_SERVER_REQUEST_OUTPUT' => false])
+            ->andReturnSelf();
+
+        Process::shouldReceive('start')
+            ->once()
+            ->with('npm run dev')
+            ->andReturn($mockViteProcess);
+
+        Process::shouldReceive('start')
+            ->once()
+            ->withArgs(function (string $command, Closure $output) {
+                $output('stdout', 'server output');
+
+                return $command === "php -S localhost:8080 {$this->binaryPath()}";
+            })
+            ->andReturn($mockServerProcess);
+
+        $this->artisan('serve --no-ansi --vite')
+            ->expectsOutput('Starting the HydeRC server... Use Ctrl+C to stop')
+            ->expectsOutput('server output')
+            ->expectsOutput('vite latest output')
+            ->assertExitCode(0);
+
+        $this->assertFileExists('app/storage/framework/cache/vite.hot');
+    }
+
+    public function testHydeServeCommandWithViteOptionButViteNotRunning()
+    {
+        $this->cleanUpWhenDone('app/storage/framework/cache/vite.hot');
+
+        $mockViteProcess = mock(InvokedProcess::class);
+        $mockViteProcess->shouldReceive('running')
+            ->once()
+            ->andReturn(false);
+
+        $mockServerProcess = mock(InvokedProcess::class);
+        $mockServerProcess->shouldReceive('running')
+            ->times(2)
+            ->andReturn(true, false);
+
+        Process::shouldReceive('forever')
+            ->twice()
+            ->withNoArgs()
+            ->andReturnSelf();
+
+        Process::shouldReceive('env')
+            ->once()
+            ->with(['HYDE_SERVER_REQUEST_OUTPUT' => false])
+            ->andReturnSelf();
+
+        Process::shouldReceive('start')
+            ->once()
+            ->with('npm run dev')
+            ->andReturn($mockViteProcess);
+
+        Process::shouldReceive('start')
+            ->once()
+            ->withArgs(function (string $command, Closure $handle) {
+                return $command === "php -S localhost:8080 {$this->binaryPath()}";
+            })
+            ->andReturn($mockServerProcess);
+
+        $this->artisan('serve --no-ansi --vite')
+            ->expectsOutput('Starting the HydeRC server... Use Ctrl+C to stop')
+            ->assertExitCode(0);
+
+        $this->assertFileExists('app/storage/framework/cache/vite.hot');
+    }
+
+    public function testHydeServeCommandWithViteOptionThrowsWhenPortIsInUse()
+    {
+        $socket = stream_socket_server('tcp://127.0.0.1:5173');
+
+        $this->artisan('serve --vite')
+            ->expectsOutputToContain('Unable to start Vite server: Port 5173 is already in use')
+            ->assertExitCode(1);
+
+        stream_socket_shutdown($socket, STREAM_SHUT_RDWR);
     }
 
     protected function binaryPath(): string

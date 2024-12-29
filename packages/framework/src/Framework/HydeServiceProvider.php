@@ -10,7 +10,7 @@ use Hyde\Pages\MarkdownPage;
 use Hyde\Pages\MarkdownPost;
 use Hyde\Foundation\HydeKernel;
 use Hyde\Pages\DocumentationPage;
-use Hyde\Framework\Services\AssetService;
+use Hyde\Framework\Services\MarkdownService;
 use Hyde\Framework\Services\BuildTaskService;
 use Hyde\Framework\Concerns\RegistersFileLocations;
 use Illuminate\Support\ServiceProvider;
@@ -29,8 +29,8 @@ class HydeServiceProvider extends ServiceProvider
     {
         $this->kernel = HydeKernel::getInstance();
 
-        $this->app->singleton(AssetService::class, AssetService::class);
         $this->app->singleton(BuildTaskService::class, BuildTaskService::class);
+        $this->app->bind(MarkdownService::class, MarkdownService::class);
 
         $this->kernel->setSourceRoot(Config::getString('hyde.source_root', ''));
 

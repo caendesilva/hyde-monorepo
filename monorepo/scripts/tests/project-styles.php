@@ -16,15 +16,9 @@ test('can install node dependencies', function () {
     $this->assert(file_exists(BASE_PATH.'/node_modules'), 'Node modules do not exist');
 });
 
-test('can build assets using laravel mix', function () {
-    $output = shell_exec('cd '.BASE_PATH.' && npm run dev');
+test('can build assets using vite', function () {
+    $output = shell_exec('cd '.BASE_PATH.' && npm run build');
 
     $this->assert(file_exists(BASE_PATH.'/_media/app.css'), 'CSS file does not exist');
-    $this->assert(file_exists(BASE_PATH.'/_site/media/app.css'), 'CSS file does not exist');
-
     $this->assert(file_exists(BASE_PATH.'/_media/app.js'), 'JS file does not exist');
-    $this->assert(file_exists(BASE_PATH.'/_site/media/app.js'), 'JS file does not exist');
-
-    $this->assert(file_exists(BASE_PATH.'/_media/mix-manifest.json'), 'Mix manifest file does not exist');
-    $this->assert(file_exists(BASE_PATH.'/_site/media/mix-manifest.json'), 'Mix manifest file does not exist');
 });

@@ -4,80 +4,74 @@ declare(strict_types=1);
 
 namespace Hyde\Framework\Features\Navigation;
 
-use Hyde\Facades\Config;
-use Hyde\Support\Models\Route;
-use Hyde\Pages\DocumentationPage;
-use BadMethodCallException;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Collection;
+use Illuminate\Contracts\Support\Arrayable;
 
-class NavigationMenu extends BaseNavigationMenu
+use function Hyde\evaluate_arrayable;
+
+/**
+ * Represents a site navigation menu, and contains all of its navigation items.
+ *
+ * The automatic navigation menus are stored within the service container and can be resolved by their identifiers.
+ *
+ * @example `$menu = app('navigation.main');` for the main navigation menu.
+ * @example `$menu = app('navigation.sidebar');` for the documentation sidebar.
+ *
+ * @template T of NavigationItem|NavigationGroup
+ */
+class NavigationMenu
 {
-    private bool $hasDropdowns;
+    public const DEFAULT = 500;
+    public const LAST = 999;
 
-    protected function generate(): void
+    /** @var \Illuminate\Support\Collection<array-key, T> */
+    protected Collection $items;
+
+    /** @param  \Illuminate\Contracts\Support\Arrayable<array-key, T>|array<T>  $items */
+    public function __construct(Arrayable|array $items = [])
     {
-        parent::generate();
+        $this->items = new Collection();
 
-        if ($this->dropdownsEnabled()) {
-            $this->moveGroupedItemsIntoDropdowns();
+        /** @var array<T> $items */
+        $items = evaluate_arrayable($items);
+
+        $this->add($items);
+    }
+
+    /**
+     * Get the navigation items in the menu.
+     *
+     * Items are automatically sorted by their priority, falling back to the order they were added.
+     *
+     * @return \Illuminate\Support\Collection<array-key, T>
+     */
+    public function getItems(): Collection
+    {
+        // The reason we sort them here is that navigation items can be added from different sources,
+        // so any sorting we do in generator actions will only be partial. This way, we can ensure
+        // that the items are always freshly sorted by their priorities when they are retrieved.
+
+        return $this->items->sortBy(fn (NavigationItem|NavigationGroup $item) => $item->getPriority())->values();
+    }
+
+    /**
+     * Add one or more navigation items to the navigation menu.
+     *
+     * @param  T|array<T>  $items
+     */
+    public function add(NavigationItem|NavigationGroup|array $items): static
+    {
+        /** @var T $item */
+        foreach (Arr::wrap($items) as $item) {
+            $this->addItem($item);
         }
+
+        return $this;
     }
 
-    public function hasDropdowns(): bool
+    protected function addItem(NavigationItem|NavigationGroup $item): void
     {
-        return $this->dropdownsEnabled() && count($this->getDropdowns()) >= 1;
-    }
-
-    /** @return array<string, DropdownNavItem> */
-    public function getDropdowns(): array
-    {
-        if (! $this->dropdownsEnabled()) {
-            throw new BadMethodCallException('Dropdowns are not enabled. Enable it by setting `hyde.navigation.subdirectories` to `dropdown`.');
-        }
-
-        return $this->items->filter(function (NavItem $item): bool {
-            return $item instanceof DropdownNavItem;
-        })->values()->all();
-    }
-
-    protected function moveGroupedItemsIntoDropdowns(): void
-    {
-        $dropdowns = [];
-
-        foreach ($this->items as $key => $item) {
-            if ($this->canAddItemToDropdown($item)) {
-                // Buffer the item in the dropdowns array
-                $dropdowns[$item->getGroup()][] = $item;
-
-                // Remove the item from the main items collection
-                $this->items->forget($key);
-            }
-        }
-
-        foreach ($dropdowns as $group => $items) {
-            // Create a new dropdown item containing the buffered items
-            $this->items->add(new DropdownNavItem($group, $items));
-        }
-    }
-
-    protected function canAddRoute(Route $route): bool
-    {
-        return parent::canAddRoute($route) && (! $route->getPage() instanceof DocumentationPage || $route->is(DocumentationPage::homeRouteName()));
-    }
-
-    protected function canAddItemToDropdown(NavItem $item): bool
-    {
-        return $item->getGroup() !== null;
-    }
-
-    protected function dropdownsEnabled(): bool
-    {
-        return (Config::getString('hyde.navigation.subdirectories', 'hidden') === 'dropdown') || $this->hasGroupExplicitlySetInFrontMatter();
-    }
-
-    private function hasGroupExplicitlySetInFrontMatter(): bool
-    {
-        return $this->hasDropdowns ??= $this->items->contains(function (NavItem $item): bool {
-            return ($item->getGroup() !== null) && ($item->destination !== (string) DocumentationPage::home());
-        });
+        $this->items->push($item);
     }
 }
