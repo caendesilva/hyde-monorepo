@@ -12,6 +12,9 @@ jobs:
   dusk-browser-tests:
     runs-on: ubuntu-latest
     steps:
+      - name: Disable system xdebug
+        run:  echo "XDEBUG_MODE=off" >> $GITHUB_ENV
+
       - uses: actions/checkout@v4
 
       - name: Cache Composer packages

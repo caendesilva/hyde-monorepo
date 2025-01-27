@@ -7,6 +7,9 @@ jobs:
   run-smoke-tests:
     runs-on: ubuntu-latest
     steps:
+      - name: Disable system xdebug
+        run:  echo "XDEBUG_MODE=off" >> $GITHUB_ENV
+
       - name: Checkout code
         uses: actions/checkout@v4
         with:
